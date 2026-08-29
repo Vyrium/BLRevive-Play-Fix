@@ -1,0 +1,40 @@
+# Locally compiled helpers / launcher
+BLReviveIconTool.exe
+BLReviveSteamLauncher.exe
+FoxGame-win32-Shipping_BE.exe
+*.pdb
+*.ilk
+*.obj
+
+# Locally extracted/generated icons (the packaged launcher ICO is tracked)
+Blacklight.ico
+BLRevive.ico
+*.ico.tmp
+
+# Runtime logs / diagnostics
+BLReviveSteamLauncher.log
+BLReviveSteamLauncher.log.old
+BLReviveSteamPlayFix-Diagnostic.txt
+BLReviveSteamPlayFix-Uninstall.log
+
+# Local backups / game files (never commit proprietary binaries)
+*.official-backup.exe
+*.blrevive-uninstall-rollback-*
+FoxGame-win32-Shipping.exe
+FoxGame-win32-Shipping_BE.original.exe
+FoxGame-win32-Shipping_BE_original.exe
+
+# Editor / OS files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+Thumbs.db
+.DS_Store
+
+# Release/build output
+build/
+dist/
+release/
+*.zip
