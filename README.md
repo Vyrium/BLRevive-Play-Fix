@@ -39,32 +39,29 @@ the launcher.
 
 INSTALL
 -------
-1. Extract the package anywhere.
+1. Download the player ZIP from the GitHub Releases page. Do not download the
+   automatically generated Source code archive.
 
-2. Double-click:
+2. Extract the player ZIP anywhere.
+
+3. Double-click:
 
      Install BLRevive Steam Play Fix.bat
 
-   This is the only player-facing install file. Windows may hide the .bat file
-   extension, but the full visible name still identifies the correct file.
-
-3. The installer finds Blacklight through Steam. If multiple installations are
+4. The installer finds Blacklight through Steam. If multiple installations are
    found, choose the correct one. If Steam discovery fails, select either the
    main Blacklight: Retribution folder or its Binaries\Win32 folder using the
    Windows folder picker.
 
-4. The current FoxGame-win32-Shipping_BE.exe is preserved as:
+5. The current FoxGame-win32-Shipping_BE.exe is preserved as:
 
      FoxGame-win32-Shipping_BE.official-backup.exe
 
-5. The compatibility wrapper is installed as:
+6. The compatibility wrapper is installed as:
 
      FoxGame-win32-Shipping_BE.exe
 
-6. Windows Explorer is notified to refresh the wrapper icon.
-
-7. Remove custom ZCure/Presence values from Steam Launch Options; they are no
-   longer required.
+7. Windows Explorer is notified to refresh the wrapper icon.
 
 8. Start Blacklight: Retribution using the normal Steam PLAY button.
 
@@ -73,10 +70,9 @@ No steam_appid.txt is required for the genuine Steam library PLAY path.
 
 LAUNCHER ICON
 -------------
-resources\BLReviveSteamLauncher.ico is the packaged launcher icon used by the
-installer. It contains 16, 24, 32, 48, 64, 96, 128 and 256-pixel PNG frames and
-is embedded directly into the locally compiled wrapper. Players do not need to
-compile or run an icon conversion tool.
+The prebuilt launcher contains 16, 24, 32, 48, 64, 96, 128 and 256-pixel icon
+frames. Players do not need to compile the launcher or run an icon conversion
+tool. The source repository keeps the packaged ICO under resources.
 
 tools\icon\BLReviveLogoNew.png is the authoritative project-owned source
 artwork. The icon tool remains in that developer-only directory so the packaged
@@ -110,9 +106,9 @@ In Blacklight's Binaries\Win32 directory:
       Uninstall scripts, diagnostic scripts, a plain-text README and generated
       install metadata.
 
-The generated launcher EXE remains under tools\launcher in the extracted
-package. Developer source, build tools and icon artwork are not copied into the
-game.
+The validated prebuilt launcher remains under payload in the extracted player
+package. Developer source, build tools and icon artwork are not included in the
+player package or copied into the game.
 
 
 CONFIGURATION
@@ -191,10 +187,9 @@ Install BLRevive Steam Play Fix.bat again afterward.
 
 BUILD MANUALLY
 --------------
-The release package already contains resources\BLReviveSteamLauncher.ico.
-Players do not need this section. Developers only need the files under
-tools\icon when changing the source artwork. Compile the developer icon tool
-and regenerate the packaged icon from the repository root:
+The player release already contains a prebuilt launcher. Players do not need
+this section. Developers working from the source repository can regenerate the
+packaged icon from the repository root:
 
   tools\icon\BuildIconTool.bat
 
@@ -210,15 +205,43 @@ The output is tools\launcher\BLReviveSteamLauncher.exe. Install copies it under
 the filename Steam expects: FoxGame-win32-Shipping_BE.exe.
 
 
+BUILD A PLAYER RELEASE
+----------------------
+From the source repository, run:
+
+  powershell.exe -NoProfile -ExecutionPolicy Bypass ^
+      -File "tools\distribution\BuildRelease.ps1"
+
+This builds the launcher, stages only player-facing files, records the payload
+SHA-256, creates dist\BLRevive-Steam-Play-Fix-1.0.0.zip, writes the archive hash
+to dist\SHA256SUMS.txt, and runs a disposable install/diagnose/uninstall smoke
+test against the exact ZIP. Build output under dist is intentionally not
+committed.
+
+For a public signed build, install SignTool and use the SHA-1 thumbprint of a
+trusted code-signing certificate plus its certificate authority's RFC 3161
+timestamp URL:
+
+  powershell.exe -NoProfile -ExecutionPolicy Bypass ^
+      -File "tools\distribution\BuildRelease.ps1" ^
+      -CertificateThumbprint "YOUR_CERTIFICATE_THUMBPRINT" ^
+      -TimestampUrl "YOUR_CA_RFC3161_TIMESTAMP_URL"
+
+The release builder signs with SHA-256, verifies the signature before packaging,
+and calculates the payload hash after signing. Without those parameters it
+creates an explicitly warned unsigned preview build.
+
+
 TROUBLESHOOTING
 ---------------
-Problem: Install says csc.exe is missing
-  Enable/install .NET Framework 4.x, or build the source with Visual Studio or
-  Visual Studio Build Tools.
+Problem: Install says the prebuilt player payload is missing
+  Download the player ZIP from GitHub Releases rather than GitHub's automatic
+  Source code archive, then extract the complete ZIP before running Install.
 
 Problem: The wrapper has a generic icon
-  Confirm resources\BLReviveSteamLauncher.ico is present and retain the full
-  install output for a support report. Steam PLAY functionality is unaffected.
+  Run Diagnose.bat and retain its report plus the full install output for
+  support. The icon is embedded in payload\BLReviveSteamLauncher.exe, and Steam
+  PLAY functionality is unaffected by Explorer's displayed icon.
 
 Problem: Steam PLAY stopped working after Verify Integrity
   Run Install BLRevive Steam Play Fix.bat again; Steam probably restored the
@@ -234,9 +257,10 @@ SOURCE AND DISTRIBUTION NOTES
 The runtime launcher performs no network access, injection, registry changes or
 game-file patching. ZCure and Presence networking remains the game's job.
 
-The source-first installer compiles locally for auditability. A future normal
-player release should use a prebuilt, consistently Authenticode-signed launcher
-and installer while retaining this source and reproducible build instructions.
+The player installer validates and copies a prebuilt launcher; it does not run a
+compiler. Source and repeatable build instructions remain public for auditing.
+The prebuilt launcher and a future single-file setup should be consistently
+Authenticode-signed before broad distribution.
 
 The package root intentionally exposes only three runnable entry points:
 
@@ -244,9 +268,9 @@ The package root intentionally exposes only three runnable entry points:
   Uninstall.bat
   Diagnose.bat
 
-PowerShell implementations are under scripts, launcher source is under src,
-packaged configuration and icon assets are under resources, and developer-only
-build/icon utilities are under tools.
+The player ZIP contains `scripts` and `payload`. The source repository also
+contains launcher source under `src`, packaged development assets under
+`resources`, and developer-only build, icon and release utilities under `tools`.
 
 
 LICENSE

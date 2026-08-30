@@ -38,3 +38,9 @@ BLRevive Steam Play Fix - Changelog
   Installed support contains only uninstall/diagnostic essentials, and duplicate
   text documentation and source-tree checksums were removed.
 - Released the project source under the MIT License.
+- Changed the player installer to validate and copy a prebuilt launcher instead
+  of compiling C# on the player's computer. Validation covers SHA-256, product
+  identity, version and Authenticode status.
+- Added repeatable release tooling that creates a player-only ZIP, publishes its
+  SHA-256, excludes developer files and smoke-tests the exact archive through
+  install, diagnostics and uninstall.

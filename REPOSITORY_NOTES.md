@@ -10,17 +10,21 @@ This repository contains the source for the forthcoming initial public
 - `tools/icon/BLReviveLogoNew.png` is the project-owned source artwork for the
   launcher icon and is intentionally tracked with its developer-only generator.
 - `resources/BLReviveSteamLauncher.ico` is the intentionally tracked,
-  multi-resolution release asset generated from that artwork. The installer
-  embeds it directly.
+  multi-resolution release asset generated from that artwork. The developer
+  build embeds it in the launcher before the player package is assembled.
 - `README.md` and `CHANGELOG.md` are the only documentation sources. Install
   copies `README.md` into the support directory as the user-friendly README.txt.
 - `Install BLRevive Steam Play Fix.bat`, `Uninstall.bat`, and `Diagnose.bat`
   are the only runnable files in the package root. Their PowerShell
   implementations live under `scripts/`; launcher source, packaged assets and
   developer tooling live under `src/`, `resources/` and `tools/`.
-- The 1.0.0 installer compiles the launcher locally and embeds the packaged ICO.
-  The icon helper is a developer-only regeneration tool. A prebuilt,
-  consistently code-signed installer/launcher is not implemented yet.
+- The 1.0.0 player installer validates and copies the prebuilt launcher from the
+  generated release payload. It never compiles code on the player's computer.
+  `tools/distribution/BuildRelease.ps1` creates and smoke-tests the player ZIP.
+- The launcher is not yet Authenticode-signed and a single-file setup is not yet
+  implemented. The release builder supports signing when a trusted certificate,
+  SignTool and RFC 3161 timestamp service are supplied. Those prerequisites and
+  the single-file setup remain gates for the broad public release.
 - The project is released under the permissive MIT License. Preserve the
   copyright and permission notice when redistributing substantial portions.
 

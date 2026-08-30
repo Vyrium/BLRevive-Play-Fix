@@ -1,3 +1,7 @@
+param(
+    [string]$GameDirectory
+)
+
 $ErrorActionPreference = 'Stop'
 
 $Version = '1.0.0'
@@ -177,6 +181,14 @@ function Select-GameDirectoryWithDialog {
 }
 
 function Select-GameDirectory {
+    if ($GameDirectory) {
+        $explicit = Resolve-GameDirectory $GameDirectory
+        if (-not $explicit) {
+            throw "FoxGame-win32-Shipping.exe was not found under: $GameDirectory"
+        }
+        return $explicit
+    }
+
     $dirs = @(Find-BLRWin32Directories)
 
     if ($dirs.Count -eq 1) { return $dirs[0] }
@@ -229,29 +241,41 @@ $TargetLauncher = Join-Path $GameDir $LauncherName
 $BackupLauncher = Join-Path $GameDir $CanonicalBackupName
 $SupportDir = Join-Path $GameDir $SupportDirName
 $TargetConfig = Join-Path $GameDir 'BLReviveLauncher.ini'
-$PackageConfig = Join-Path $PackageDir 'resources\BLReviveLauncher.ini'
-$PackagedIcon = Join-Path $PackageDir 'resources\BLReviveSteamLauncher.ico'
+$PayloadDir = Join-Path $PackageDir 'payload'
+$PackageConfig = Join-Path $PayloadDir 'BLReviveLauncher.ini'
+$PackagedLauncher = Join-Path $PayloadDir 'BLReviveSteamLauncher.exe'
+$LauncherHashFile = Join-Path $PayloadDir 'BLReviveSteamLauncher.sha256'
 
-if (-not (Test-Path -LiteralPath $PackagedIcon -PathType Leaf)) {
-    throw 'BLReviveSteamLauncher.ico is missing from the installer package.'
+foreach ($requiredFile in @($PackageConfig, $PackagedLauncher, $LauncherHashFile)) {
+    if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
+        throw "The player payload is incomplete. Missing: $requiredFile"
+    }
 }
 
-# Build the auditable launcher locally, embedding the packaged project icon.
-Write-Step 'Using the packaged multi-resolution BLRevive launcher icon.'
-Write-Step 'Compiling the Steam compatibility launcher locally from source...'
-$BuildScript = Join-Path $PackageDir 'tools\launcher\BuildLauncher.bat'
-$BuiltLauncher = Join-Path $PackageDir 'tools\launcher\BLReviveSteamLauncher.exe'
-Remove-Item -LiteralPath $BuiltLauncher -Force -ErrorAction SilentlyContinue
-
-& $BuildScript $PackagedIcon
-$BuildExit = $LASTEXITCODE
-
-if ($BuildExit -ne 0) {
-    throw "Launcher compilation failed with exit code $BuildExit."
+$expectedHash = ((Get-Content -Raw -LiteralPath $LauncherHashFile).Trim() -split '\s+')[0].ToUpperInvariant()
+if ($expectedHash -notmatch '^[0-9A-F]{64}$') {
+    throw 'The packaged launcher SHA-256 file is malformed.'
 }
-if (-not (Test-Path $BuiltLauncher)) {
-    throw 'BLReviveSteamLauncher.exe was not produced by the build step.'
+
+$actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $PackagedLauncher).Hash.ToUpperInvariant()
+if ($actualHash -ne $expectedHash) {
+    throw 'The packaged launcher failed SHA-256 validation. Re-download the release before installing.'
 }
+
+$launcherInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($PackagedLauncher)
+if ($launcherInfo.ProductName -ne 'BLRevive Steam Play Fix' -or $launcherInfo.FileVersion -ne '1.0.0.0') {
+    throw 'The packaged launcher identity or version is incorrect.'
+}
+
+$signature = Get-AuthenticodeSignature -LiteralPath $PackagedLauncher
+$SignatureStatus = $signature.Status.ToString()
+if ($SignatureStatus -eq 'NotSigned') {
+    Write-Warn 'The prebuilt launcher is not yet Authenticode-signed.'
+} elseif ($SignatureStatus -ne 'Valid') {
+    throw "The packaged launcher signature is not valid: $SignatureStatus"
+}
+
+Write-Step "Validated prebuilt BLRevive launcher (SHA-256: $actualHash)"
 
 # Recover one of the backup names used by earlier manual instructions if present.
 if (-not (Test-Path $BackupLauncher)) {
@@ -298,7 +322,7 @@ if (Test-Path $BackupLauncher) {
 }
 
 Write-Step "Installing wrapper as $LauncherName"
-Copy-Item -LiteralPath $BuiltLauncher -Destination $TargetLauncher -Force
+Copy-Item -LiteralPath $PackagedLauncher -Destination $TargetLauncher -Force
 
 if (-not (Test-Path $TargetConfig)) {
     Write-Step 'Installing BLReviveLauncher.ini'
@@ -332,8 +356,10 @@ $installInfo = @(
     ('Backup=' + $BackupLauncher),
     ('Config=' + $TargetConfig),
     ('RuntimeLog=' + (Join-Path $GameDir 'BLReviveSteamLauncher.log')),
-    ('IconMode=PackagedBLReviveLogo'),
-    ('IconSource=' + $PackagedIcon),
+    ('PayloadSHA256=' + $actualHash),
+    ('SignatureStatus=' + $SignatureStatus),
+    ('IconMode=EmbeddedPrebuiltBLReviveLogo'),
+    ('IconSource=' + $PackagedLauncher),
     ('IconEmbedded=True'),
     ('ShellIconRefreshRequested=' + $(if ($ShellIconRefreshRequested) { 'True' } else { 'False' }))
 )
@@ -346,7 +372,7 @@ Write-Host 'Steam Play will now launch FoxGame-win32-Shipping.exe through the BL
 Write-Host 'You do not need custom ZCure/Presence Steam Launch Options.'
 Write-Host ''
 Write-Host 'Launcher icon:'
-Write-Host '  Packaged BLReviveSteamLauncher.ico embedded as a multi-resolution Windows icon.'
+Write-Host '  Embedded in the validated prebuilt BLRevive launcher.'
 Write-Host ''
 Write-Host 'Runtime diagnostic log:'
 Write-Host ('  ' + (Join-Path $GameDir 'BLReviveSteamLauncher.log'))
