@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
 $Version = '1.0.0'
-$PackageDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$PackageDir = Split-Path -Parent $ScriptDir
 $LauncherName = 'FoxGame-win32-Shipping_BE.exe'
 $GameExeName = 'FoxGame-win32-Shipping.exe'
 $CanonicalBackupName = 'FoxGame-win32-Shipping_BE.official-backup.exe'
@@ -84,6 +85,24 @@ function Normalize-VdfPath([string]$Path) {
     return $Path.Replace('\\', '\')
 }
 
+function Resolve-GameDirectory([string]$Path) {
+    if ([String]::IsNullOrWhiteSpace($Path)) { return $null }
+
+    $trimmed = $Path.Trim().Trim('"')
+    if ([String]::IsNullOrWhiteSpace($trimmed)) { return $null }
+
+    foreach ($candidate in @(
+        $trimmed,
+        (Join-Path $trimmed 'Binaries\Win32')
+    )) {
+        if (Test-Path -LiteralPath (Join-Path $candidate $GameExeName) -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+
+    return $null
+}
+
 function Get-SteamRoots {
     $roots = New-Object System.Collections.Generic.List[string]
 
@@ -129,18 +148,32 @@ function Get-SteamLibraries {
 function Find-BLRWin32Directories {
     $results = New-Object System.Collections.Generic.List[string]
 
-    if (Test-Path (Join-Path $PackageDir $GameExeName)) {
-        $results.Add($PackageDir)
-    }
+    $local = Resolve-GameDirectory $PackageDir
+    if ($local) { $results.Add($local) }
 
     foreach ($library in Get-SteamLibraries) {
-        $candidate = Join-Path $library 'steamapps\common\blacklightretribution\Binaries\Win32'
-        if (Test-Path (Join-Path $candidate $GameExeName)) {
-            $results.Add($candidate)
-        }
+        $candidate = Resolve-GameDirectory (Join-Path $library 'steamapps\common\blacklightretribution')
+        if ($candidate) { $results.Add($candidate) }
     }
 
     return $results | Select-Object -Unique
+}
+
+function Select-GameDirectoryWithDialog {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dialog.Description = 'Select the Blacklight: Retribution folder or its Binaries\Win32 folder.'
+        $dialog.ShowNewFolderButton = $false
+
+        if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            return Resolve-GameDirectory $dialog.SelectedPath
+        }
+    } catch {
+        Write-Warn ('Windows folder picker could not be opened: ' + $_.Exception.Message)
+    }
+
+    return $null
 }
 
 function Select-GameDirectory {
@@ -163,13 +196,14 @@ function Select-GameDirectory {
         }
     }
 
-    Write-Warn 'Blacklight: Retribution was not found automatically.'
-    Write-Host 'Enter the full path to the game Binaries\Win32 folder.'
-    Write-Host 'Example: D:\SteamLibrary\steamapps\common\blacklightretribution\Binaries\Win32'
-    $manual = (Read-Host 'Path').Trim('"')
+    Write-Warn 'Blacklight: Retribution was not found automatically. Opening a folder picker.'
+    $selected = Select-GameDirectoryWithDialog
+    if ($selected) { return $selected }
 
-    if (-not (Test-Path (Join-Path $manual $GameExeName))) {
-        throw "FoxGame-win32-Shipping.exe was not found in: $manual"
+    Write-Host 'Enter the Blacklight: Retribution folder or its Binaries\Win32 folder:'
+    $manual = Resolve-GameDirectory (Read-Host 'Path')
+    if (-not $manual) {
+        throw 'FoxGame-win32-Shipping.exe was not found in the selected location.'
     }
 
     return $manual
@@ -195,8 +229,8 @@ $TargetLauncher = Join-Path $GameDir $LauncherName
 $BackupLauncher = Join-Path $GameDir $CanonicalBackupName
 $SupportDir = Join-Path $GameDir $SupportDirName
 $TargetConfig = Join-Path $GameDir 'BLReviveLauncher.ini'
-$PackageConfig = Join-Path $PackageDir 'BLReviveLauncher.ini'
-$PackagedIcon = Join-Path $PackageDir 'BLReviveSteamLauncher.ico'
+$PackageConfig = Join-Path $PackageDir 'resources\BLReviveLauncher.ini'
+$PackagedIcon = Join-Path $PackageDir 'resources\BLReviveSteamLauncher.ico'
 
 if (-not (Test-Path -LiteralPath $PackagedIcon -PathType Leaf)) {
     throw 'BLReviveSteamLauncher.ico is missing from the installer package.'
@@ -205,10 +239,11 @@ if (-not (Test-Path -LiteralPath $PackagedIcon -PathType Leaf)) {
 # Build the auditable launcher locally, embedding the packaged project icon.
 Write-Step 'Using the packaged multi-resolution BLRevive launcher icon.'
 Write-Step 'Compiling the Steam compatibility launcher locally from source...'
-$BuiltLauncher = Join-Path $PackageDir 'BLReviveSteamLauncher.exe'
+$BuildScript = Join-Path $PackageDir 'tools\launcher\BuildLauncher.bat'
+$BuiltLauncher = Join-Path $PackageDir 'tools\launcher\BLReviveSteamLauncher.exe'
 Remove-Item -LiteralPath $BuiltLauncher -Force -ErrorAction SilentlyContinue
 
-& (Join-Path $PackageDir 'BuildLauncher.bat') $PackagedIcon
+& $BuildScript $PackagedIcon
 $BuildExit = $LASTEXITCODE
 
 if ($BuildExit -ne 0) {
@@ -274,13 +309,13 @@ if (-not (Test-Path $TargetConfig)) {
 
 Write-Step 'Installing uninstall and diagnostic support.'
 New-Item -ItemType Directory -Path $SupportDir -Force | Out-Null
-foreach ($name in @(
-    'Uninstall.bat',
-    'Uninstall.ps1',
-    'Diagnose.bat',
-    'Diagnose.ps1'
+foreach ($file in @(
+    @{ Source = 'Uninstall.bat'; Destination = 'Uninstall.bat' },
+    @{ Source = 'scripts\BLReviveUninstaller.ps1'; Destination = 'BLReviveUninstaller.ps1' },
+    @{ Source = 'Diagnose.bat'; Destination = 'Diagnose.bat' },
+    @{ Source = 'scripts\BLReviveDiagnostics.ps1'; Destination = 'BLReviveDiagnostics.ps1' }
 )) {
-    Copy-Item -LiteralPath (Join-Path $PackageDir $name) -Destination (Join-Path $SupportDir $name) -Force
+    Copy-Item -LiteralPath (Join-Path $PackageDir $file.Source) -Destination (Join-Path $SupportDir $file.Destination) -Force
 }
 Copy-Item -LiteralPath (Join-Path $PackageDir 'README.md') -Destination (Join-Path $SupportDir 'README.txt') -Force
 

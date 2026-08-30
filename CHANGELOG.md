@@ -27,7 +27,14 @@ BLRevive Steam Play Fix - Changelog
 - Uninstall now discovers Blacklight through the registered Steam installation
   and all Steam libraries, preferring an installation containing the BLRevive
   fix. If discovery fails, it opens a folder picker before asking for typed input.
-- Simplified the initial release layout: developer icon tooling lives under
-  tools\icon, installed support contains only uninstall/diagnostic essentials,
-  and duplicate text documentation and source-tree checksums were removed.
+- Install now uses the same folder-picker fallback when Steam discovery fails,
+  accepting either the Blacklight root folder or Binaries\Win32.
+- Renamed the player-facing installer to Install BLRevive Steam Play Fix.bat
+  and gave the PowerShell implementations distinct internal names, preventing
+  confusion when Windows hides file extensions.
+- Simplified the initial release layout: the root exposes only the three player
+  entry-point BAT files; implementation scripts, launcher source, packaged
+  resources and developer tooling live under scripts, src, resources and tools.
+  Installed support contains only uninstall/diagnostic essentials, and duplicate
+  text documentation and source-tree checksums were removed.
 - Released the project source under the MIT License.

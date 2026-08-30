@@ -1,13 +1,17 @@
 @echo off
 setlocal EnableExtensions
-cd /d "%~dp0"
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..\..") do set "ROOT=%%~fI"
+set "SOURCE=%ROOT%\src\BLReviveSteamLauncher.cs"
+set "OUTPUT=%SCRIPT_DIR%BLReviveSteamLauncher.exe"
+set "ICON="
+if not "%~1"=="" set "ICON=%~f1"
 
-if exist "BLReviveSteamLauncher.exe" del /q "BLReviveSteamLauncher.exe" >nul 2>nul
+if exist "%OUTPUT%" del /q "%OUTPUT%" >nul 2>nul
 
 echo BLRevive Steam Play Fix - Build Launcher
 echo.
 
-set "ICON=%~1"
 set "CSC="
 if exist "%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe" set "CSC=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 if not defined CSC if exist "%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" set "CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
@@ -20,8 +24,9 @@ if not defined CSC (
     exit /b 1
 )
 
-if not exist "BLReviveSteamLauncher.cs" (
-    echo ERROR: BLReviveSteamLauncher.cs is missing.
+if not exist "%SOURCE%" (
+    echo ERROR: Launcher source is missing:
+    echo   "%SOURCE%"
     exit /b 1
 )
 
@@ -39,18 +44,18 @@ if defined ICON (
 )
 
 echo Compiler: "%CSC%"
-"%CSC%" /nologo /target:winexe /platform:x86 /optimize+ /reference:System.Windows.Forms.dll %ICONARG% /out:"BLReviveSteamLauncher.exe" "BLReviveSteamLauncher.cs"
+"%CSC%" /nologo /target:winexe /platform:x86 /optimize+ /reference:System.Windows.Forms.dll %ICONARG% /out:"%OUTPUT%" "%SOURCE%"
 if errorlevel 1 (
     echo.
     echo ERROR: Launcher compilation failed.
     exit /b 1
 )
 
-if not exist "BLReviveSteamLauncher.exe" (
+if not exist "%OUTPUT%" (
     echo ERROR: Compilation reported success but no EXE was produced.
     exit /b 1
 )
 
 echo.
-echo Build successful: BLReviveSteamLauncher.exe
+echo Build successful: "%OUTPUT%"
 exit /b 0

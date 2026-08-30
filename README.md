@@ -43,10 +43,15 @@ INSTALL
 
 2. Double-click:
 
-     Install.bat
+     Install BLRevive Steam Play Fix.bat
+
+   This is the only player-facing install file. Windows may hide the .bat file
+   extension, but the full visible name still identifies the correct file.
 
 3. The installer finds Blacklight through Steam. If multiple installations are
-   found, choose the correct one.
+   found, choose the correct one. If Steam discovery fails, select either the
+   main Blacklight: Retribution folder or its Binaries\Win32 folder using the
+   Windows folder picker.
 
 4. The current FoxGame-win32-Shipping_BE.exe is preserved as:
 
@@ -68,10 +73,10 @@ No steam_appid.txt is required for the genuine Steam library PLAY path.
 
 LAUNCHER ICON
 -------------
-BLReviveSteamLauncher.ico is the packaged launcher icon used by the installer.
-It contains 16, 24, 32, 48, 64, 96, 128 and 256-pixel PNG frames and is embedded
-directly into the locally compiled wrapper. Players do not need to compile or
-run an icon conversion tool.
+resources\BLReviveSteamLauncher.ico is the packaged launcher icon used by the
+installer. It contains 16, 24, 32, 48, 64, 96, 128 and 256-pixel PNG frames and
+is embedded directly into the locally compiled wrapper. Players do not need to
+compile or run an icon conversion tool.
 
 tools\icon\BLReviveLogoNew.png is the authoritative project-owned source
 artwork. The icon tool remains in that developer-only directory so the packaged
@@ -105,8 +110,9 @@ In Blacklight's Binaries\Win32 directory:
       Uninstall scripts, diagnostic scripts, a plain-text README and generated
       install metadata.
 
-The generated launcher EXE remains only in the extracted installer directory.
-Developer source, build tools and icon artwork are not copied into the game.
+The generated launcher EXE remains under tools\launcher in the extracted
+package. Developer source, build tools and icon artwork are not copied into the
+game.
 
 
 CONFIGURATION
@@ -180,27 +186,28 @@ STEAM VERIFY INTEGRITY
 ----------------------
 Steam considers FoxGame-win32-Shipping_BE.exe an official depot file. Verify
 Integrity may therefore restore the obsolete Steam launcher over this fix. Run
-Install.bat again afterward.
+Install BLRevive Steam Play Fix.bat again afterward.
 
 
 BUILD MANUALLY
 --------------
-The release package already contains BLReviveSteamLauncher.ico. Developers only
-need the files under tools\icon when changing the source artwork. Compile the
-developer icon tool and regenerate the packaged icon from the repository root:
+The release package already contains resources\BLReviveSteamLauncher.ico.
+Players do not need this section. Developers only need the files under
+tools\icon when changing the source artwork. Compile the developer icon tool
+and regenerate the packaged icon from the repository root:
 
   tools\icon\BuildIconTool.bat
 
   tools\icon\BLReviveIconTool.exe ^
       --input "tools\icon\BLReviveLogoNew.png" ^
-      --output "BLReviveSteamLauncher.ico"
+      --output "resources\BLReviveSteamLauncher.ico"
 
-BuildLauncher.bat embeds that icon and compiles the x86 GUI wrapper:
+The developer build script embeds that icon and compiles the x86 GUI wrapper:
 
-  BuildLauncher.bat "BLReviveSteamLauncher.ico"
+  tools\launcher\BuildLauncher.bat "resources\BLReviveSteamLauncher.ico"
 
-The output BLReviveSteamLauncher.exe is installed under the filename Steam
-expects: FoxGame-win32-Shipping_BE.exe.
+The output is tools\launcher\BLReviveSteamLauncher.exe. Install copies it under
+the filename Steam expects: FoxGame-win32-Shipping_BE.exe.
 
 
 TROUBLESHOOTING
@@ -210,11 +217,12 @@ Problem: Install says csc.exe is missing
   Visual Studio Build Tools.
 
 Problem: The wrapper has a generic icon
-  Confirm BLReviveSteamLauncher.ico is beside Install.bat and retain the full
+  Confirm resources\BLReviveSteamLauncher.ico is present and retain the full
   install output for a support report. Steam PLAY functionality is unaffected.
 
 Problem: Steam PLAY stopped working after Verify Integrity
-  Run Install.bat again; Steam probably restored the official _BE launcher.
+  Run Install BLRevive Steam Play Fix.bat again; Steam probably restored the
+  official _BE launcher.
 
 Problem: The game does not reach BLRevive
   Check BLReviveLauncher.ini, then inspect BLReviveSteamLauncher.log to confirm
@@ -229,6 +237,16 @@ game-file patching. ZCure and Presence networking remains the game's job.
 The source-first installer compiles locally for auditability. A future normal
 player release should use a prebuilt, consistently Authenticode-signed launcher
 and installer while retaining this source and reproducible build instructions.
+
+The package root intentionally exposes only three runnable entry points:
+
+  Install BLRevive Steam Play Fix.bat
+  Uninstall.bat
+  Diagnose.bat
+
+PowerShell implementations are under scripts, launcher source is under src,
+packaged configuration and icon assets are under resources, and developer-only
+build/icon utilities are under tools.
 
 
 LICENSE
