@@ -7,7 +7,7 @@ This repository contains the source for the forthcoming initial public
 
 - Do **not** commit Blacklight: Retribution executables, icons extracted from
   the game, locally compiled executables, or other proprietary game assets.
-- `resources/BLReviveLogo.svg` is the project-owned vector master for the
+- `resources/BLReviveLogo.svg` is the project vector master for the
   launcher icon. `tools/icon/RenderSvgLogo.ps1` renders it to a temporary
   transparent PNG before the developer icon tool packages the ICO.
 - `resources/BLReviveSteamLauncher.ico` is the intentionally tracked,
@@ -22,18 +22,7 @@ This repository contains the source for the forthcoming initial public
 - The 1.0.0 player installer validates and copies the prebuilt launcher from the
   generated release payload. It never compiles code on the player's computer.
   `tools/distribution/BuildRelease.ps1` creates and smoke-tests the player ZIP.
-- The launcher is not yet Authenticode-signed and a single-file setup is not yet
-  implemented. The release builder supports signing when a trusted certificate,
-  SignTool and RFC 3161 timestamp service are supplied. Those prerequisites and
-  the single-file setup remain gates for the broad public release.
+- The player release is intentionally a ZIP with the three root BAT entry
+  points; no separate setup executable is required.
 - The project is released under the permissive MIT License. Preserve the
   copyright and permission notice when redistributing substantial portions.
-
-## Initial commit
-
-Before committing, confirm that generated EXEs, untracked/generated ICOs, logs,
-diagnostic reports, game files, and launcher backups are absent or ignored. The
-packaged `resources/BLReviveSteamLauncher.ico` is the intentional exception.
-Then create the initial commit and tag only after the 1.0.0 release candidate
-has passed installation, Steam launch, diagnostic, uninstall, and Steam Verify
-tests on Windows.

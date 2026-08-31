@@ -67,7 +67,7 @@ $installInfo = Join-Path $ScriptDir 'install-info.txt'
 if (Test-Path $installInfo) {
     Add-Line 'Install metadata:'
     foreach ($line in Get-Content -LiteralPath $installInfo) {
-        if ($line -match '^(BLRevive|Installed=|PayloadSHA256=|SignatureStatus=|IconMode=|IconSource=|IconEmbedded=|ShellIconRefreshRequested=)') { Add-Line ('  ' + $line) }
+        if ($line -match '^(BLRevive|Installed=|PayloadSHA256=|IconMode=|IconSource=|IconEmbedded=|ShellIconRefreshRequested=)') { Add-Line ('  ' + $line) }
     }
     Add-Line ''
 }

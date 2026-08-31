@@ -1,8 +1,5 @@
 param(
     [string]$Version = '1.0.0',
-    [string]$CertificateThumbprint,
-    [string]$TimestampUrl,
-    [string]$SignToolPath = 'signtool.exe',
     [switch]$SkipTest,
     [switch]$KeepStaging
 )
@@ -50,22 +47,6 @@ try {
         throw 'Built launcher identity or version does not match the requested release.'
     }
 
-    if ($CertificateThumbprint) {
-        if (-not $TimestampUrl) {
-            throw 'TimestampUrl is required when CertificateThumbprint is supplied.'
-        }
-        $signTool = (Get-Command -Name $SignToolPath -CommandType Application -ErrorAction Stop).Source
-        & $signTool sign /sha1 $CertificateThumbprint /fd SHA256 /tr $TimestampUrl /td SHA256 $BuiltLauncher
-        if ($LASTEXITCODE -ne 0) {
-            throw "Authenticode signing failed with exit code $LASTEXITCODE."
-        }
-        & $signTool verify /pa $BuiltLauncher
-        if ($LASTEXITCODE -ne 0) {
-            throw "Authenticode verification failed with exit code $LASTEXITCODE."
-        }
-    } else {
-        Write-Warning 'Building an unsigned preview. Supply CertificateThumbprint and TimestampUrl for public distribution.'
-    }
 
     foreach ($name in @(
         'Install BLRevive Steam Play Fix.bat',

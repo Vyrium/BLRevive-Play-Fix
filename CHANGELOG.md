@@ -39,9 +39,9 @@ BLRevive Steam Play Fix - Changelog
 - Released the project source under the MIT License.
 - Changed the player installer to validate and copy a prebuilt launcher instead
   of compiling C# on the player's computer. Validation covers SHA-256, product
-  identity, version and Authenticode status.
+  identity and version.
 - Added repeatable release tooling that creates a player-only ZIP, publishes its
   SHA-256, excludes developer files and smoke-tests the exact archive through
   install, diagnostics and uninstall.
-- Replaced the low-resolution launcher artwork with the project-owned
-  BLReviveLogo.svg vector master and regenerated the multi-resolution ICO.
+- Replaced the low-resolution launcher artwork with the project BLReviveLogo.svg
+  vector master and regenerated the multi-resolution ICO.

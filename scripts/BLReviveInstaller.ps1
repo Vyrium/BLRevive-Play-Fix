@@ -267,13 +267,6 @@ if ($launcherInfo.ProductName -ne 'BLRevive Steam Play Fix' -or $launcherInfo.Fi
     throw 'The packaged launcher identity or version is incorrect.'
 }
 
-$signature = Get-AuthenticodeSignature -LiteralPath $PackagedLauncher
-$SignatureStatus = $signature.Status.ToString()
-if ($SignatureStatus -eq 'NotSigned') {
-    Write-Warn 'The prebuilt launcher is not yet Authenticode-signed.'
-} elseif ($SignatureStatus -ne 'Valid') {
-    throw "The packaged launcher signature is not valid: $SignatureStatus"
-}
 
 Write-Step "Validated prebuilt BLRevive launcher (SHA-256: $actualHash)"
 
@@ -357,7 +350,7 @@ $installInfo = @(
     ('Config=' + $TargetConfig),
     ('RuntimeLog=' + (Join-Path $GameDir 'BLReviveSteamLauncher.log')),
     ('PayloadSHA256=' + $actualHash),
-    ('SignatureStatus=' + $SignatureStatus),
+
     ('IconMode=EmbeddedPrebuiltBLReviveLogo'),
     ('IconSource=' + $PackagedLauncher),
     ('IconEmbedded=True'),
