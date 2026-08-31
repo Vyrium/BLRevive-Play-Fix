@@ -74,9 +74,9 @@ The prebuilt launcher contains 16, 24, 32, 48, 64, 96, 128 and 256-pixel icon
 frames. Players do not need to compile the launcher or run an icon conversion
 tool. The source repository keeps the packaged ICO under resources.
 
-tools\icon\BLReviveLogoNew.png is the authoritative project-owned source
-artwork. The icon tool remains in that developer-only directory so the packaged
-ICO can be regenerated when the artwork changes.
+resources\BLReviveLogo.svg is the authoritative project-owned source artwork.
+The developer-only icon tooling renders it to a transparent PNG and packages the
+multi-resolution ICO when the artwork changes.
 
 Windows Explorer caches icons by filename. Install and Uninstall request
 documented item, folder and icon-cache refresh notifications so the fixed Steam
@@ -189,13 +189,9 @@ BUILD MANUALLY
 --------------
 The player release already contains a prebuilt launcher. Players do not need
 this section. Developers working from the source repository can regenerate the
-packaged icon from the repository root:
+packaged icon directly from resources\BLReviveLogo.svg:
 
   tools\icon\BuildIconTool.bat
-
-  tools\icon\BLReviveIconTool.exe ^
-      --input "tools\icon\BLReviveLogoNew.png" ^
-      --output "resources\BLReviveSteamLauncher.ico"
 
 The developer build script embeds that icon and compiles the x86 GUI wrapper:
 

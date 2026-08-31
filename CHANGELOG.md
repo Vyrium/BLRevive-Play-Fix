@@ -11,9 +11,8 @@ BLRevive Steam Play Fix - Changelog
 - Keeps the wrapper alive until the game exits for Steam Running/playtime
   tracking and records diagnostic launch information with sensitive-value
   redaction.
-- Added the packaged multi-resolution BLReviveSteamLauncher.ico, generated from
-  project-owned tools\icon\BLReviveLogoNew.png artwork and embedded directly by
-  the installer.
+- Added the packaged multi-resolution BLReviveSteamLauncher.ico, embedded
+  directly by the installer.
 - Added install metadata, diagnostics, and preservation of existing endpoint
   configuration.
 - Uninstall restores a usable original launcher backup and leaves an existing
@@ -44,3 +43,5 @@ BLRevive Steam Play Fix - Changelog
 - Added repeatable release tooling that creates a player-only ZIP, publishes its
   SHA-256, excludes developer files and smoke-tests the exact archive through
   install, diagnostics and uninstall.
+- Replaced the low-resolution launcher artwork with the project-owned
+  BLReviveLogo.svg vector master and regenerated the multi-resolution ICO.
