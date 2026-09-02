@@ -254,8 +254,10 @@ function Invoke-PrerequisiteSetup {
 
     Write-Warn 'One or more Blacklight prerequisites are missing.'
     Write-Warn 'Windows may ask for administrator permission while they are installed.'
-    Write-Host 'The prerequisite step is automatic. You do not need to press Enter.'
-    Write-Host 'Keep all installer windows open and wait for a success or error message.'
+    Write-Host 'The prerequisite step is normally automatic.'
+    Write-Host 'Wait while download percentages or elapsed-time messages are changing.'
+    Write-Host 'If PowerShell visibly waits after a completed download, click that window and press Enter once.'
+    Write-Host 'Keep all installer windows open until a success or error message appears.'
 
     if (Test-Administrator) {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Install
@@ -263,7 +265,7 @@ function Invoke-PrerequisiteSetup {
     } else {
         Write-Step 'Opening the prerequisite installer with administrator permission.'
         Write-Host 'Approve the Windows prompt. A second PowerShell window will show download and install progress.'
-        Write-Host 'This window will wait automatically. Do not press Enter or close either window.'
+        Write-Host 'This window waits for the administrator window. Follow any prompt shown there and do not close either window.'
         $quotedScript = '"' + $script.Replace('"', '""') + '"'
         $process = Start-Process -FilePath 'powershell.exe' -Verb RunAs -Wait -PassThru -ArgumentList (
             '-NoProfile -ExecutionPolicy Bypass -File ' + $quotedScript + ' -Install'

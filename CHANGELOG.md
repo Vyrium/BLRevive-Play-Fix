@@ -24,6 +24,10 @@ BLRevive Steam Play Fix - Changelog
   shows its final lines instead of reporting only an elevated-process exit code.
 - Diagnose.bat now prompts archive users to select their game folder and includes
   the prerequisite installation log in its support report.
+- Waiting instructions now account for systems where PowerShell requires Enter
+  after a completed download or has paused because console text was selected.
+- VC++ 2012 and 2013 detection now accepts Microsoft uninstall registrations at
+  the required version, avoiding false failures after successful installation.
 
 1.0.0
 -----

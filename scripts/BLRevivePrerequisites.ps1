@@ -120,6 +120,32 @@ function Test-VersionedFiles([string[]]$Paths, [version]$MinimumVersion) {
     return $true
 }
 
+function Convert-ToFourPartVersion([string]$Text) {
+    if ([String]::IsNullOrWhiteSpace($Text)) { return $null }
+    $match = [regex]::Match($Text, '\d+(?:\.\d+){1,3}')
+    if (-not $match.Success) { return $null }
+
+    $parts = @($match.Value.Split('.'))
+    while ($parts.Count -lt 4) { $parts += '0' }
+    try { return [version](($parts[0..3]) -join '.') } catch { return $null }
+}
+
+function Test-RegisteredVisualCpp([string]$Year, [ValidateSet('x86', 'x64')] [string]$Architecture, [version]$MinimumVersion) {
+    $uninstallRoots = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    $namePattern = 'Microsoft Visual C\+\+\s+' + [regex]::Escape($Year) + '\s+Redistributable.*\(' + $Architecture + '\)'
+
+    foreach ($product in Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue) {
+        if ($product.DisplayName -notmatch $namePattern) { continue }
+        $installedVersion = Convert-ToFourPartVersion $product.DisplayVersion
+        if (-not $installedVersion) { $installedVersion = Convert-ToFourPartVersion $product.DisplayName }
+        if ($installedVersion -and $installedVersion -ge $MinimumVersion) { return $true }
+    }
+    return $false
+}
+
 function Test-DotNet4 {
     foreach ($key in @(
         'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full',
@@ -162,11 +188,13 @@ function Get-PrerequisiteState {
     })
     $results.Add([pscustomobject]@{
         Id = 'VC2012x86'; Name = 'Visual C++ 2012 Update 4 Redistributable (x86)';
-        Installed = Test-VersionedFiles @((Join-Path $x86 'msvcr110.dll'), (Join-Path $x86 'msvcp110.dll')) ([version]'11.0.61030.0')
+        Installed = ((Test-RegisteredVisualCpp '2012' 'x86' ([version]'11.0.61030.0')) -or
+            (Test-VersionedFiles @((Join-Path $x86 'msvcr110.dll'), (Join-Path $x86 'msvcp110.dll')) ([version]'11.0.61030.0')))
     })
     $results.Add([pscustomobject]@{
         Id = 'VC2013x86'; Name = 'Visual C++ 2013 Redistributable (x86)';
-        Installed = Test-VersionedFiles @((Join-Path $x86 'msvcr120.dll'), (Join-Path $x86 'msvcp120.dll')) ([version]'12.0.40664.0')
+        Installed = ((Test-RegisteredVisualCpp '2013' 'x86' ([version]'12.0.40664.0')) -or
+            (Test-VersionedFiles @((Join-Path $x86 'msvcr120.dll'), (Join-Path $x86 'msvcp120.dll')) ([version]'12.0.40664.0')))
     })
 
     if ([Environment]::Is64BitOperatingSystem) {
@@ -176,11 +204,13 @@ function Get-PrerequisiteState {
         })
         $results.Add([pscustomobject]@{
             Id = 'VC2012x64'; Name = 'Visual C++ 2012 Update 4 Redistributable (x64)';
-            Installed = Test-VersionedFiles @((Join-Path $system32 'msvcr110.dll'), (Join-Path $system32 'msvcp110.dll')) ([version]'11.0.61030.0')
+            Installed = ((Test-RegisteredVisualCpp '2012' 'x64' ([version]'11.0.61030.0')) -or
+                (Test-VersionedFiles @((Join-Path $system32 'msvcr110.dll'), (Join-Path $system32 'msvcp110.dll')) ([version]'11.0.61030.0')))
         })
         $results.Add([pscustomobject]@{
             Id = 'VC2013x64'; Name = 'Visual C++ 2013 Redistributable (x64)';
-            Installed = Test-VersionedFiles @((Join-Path $system32 'msvcr120.dll'), (Join-Path $system32 'msvcp120.dll')) ([version]'12.0.40664.0')
+            Installed = ((Test-RegisteredVisualCpp '2013' 'x64' ([version]'12.0.40664.0')) -or
+                (Test-VersionedFiles @((Join-Path $system32 'msvcr120.dll'), (Join-Path $system32 'msvcp120.dll')) ([version]'12.0.40664.0')))
         })
     }
 
@@ -219,7 +249,8 @@ function Get-SignedDownload([string]$Name, [string]$Url, [string]$FileName, [str
         Write-Status ('Downloading ' + $Name + '.')
         Write-Host ('    Source: ' + $Url)
         Write-Host ('    Save to: ' + $path)
-        Write-Host '    No input is required. Keep this window open and wait for the progress display.'
+        Write-Host '    Keep this window open and wait while the progress display is changing.'
+        Write-Host '    If the window visibly waits after the download completes, press Enter once to continue.'
         try {
             Invoke-VisibleDownload $Name $Url $path
         } catch {
@@ -245,8 +276,9 @@ function Get-SignedDownload([string]$Name, [string]$Url, [string]$FileName, [str
 function Invoke-Installer([string]$Name, [string]$FilePath, [string[]]$Arguments) {
     Write-Status ('Starting the silent installer for ' + $Name + '.')
     Write-Host ('    Installer: ' + $FilePath)
-    Write-Host '    No input is required. The installer may take several minutes and may not show another window.'
-    Write-Host '    Please keep this window open. Progress will continue automatically.'
+    Write-Host '    The installer normally needs no input, but follow any prompt that appears.'
+    Write-Host '    It may take several minutes and may not show another window.'
+    Write-Host '    Please keep this window open while the elapsed-time display is changing.'
 
     $stopwatch = [Diagnostics.Stopwatch]::StartNew()
     $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -PassThru
@@ -333,8 +365,11 @@ Write-Host '------------------------'
 Write-Host ('Missing components: ' + $missing.Count)
 Write-Host ('Download cache: ' + $DownloadDirectory)
 Write-Host 'Downloads come directly from Microsoft or NVIDIA using the URLs shown below.'
-Write-Host 'No keyboard input is required during downloads or silent installation.'
-Write-Host 'Do not press Enter or close this window. Each step advances automatically.'
+Write-Host 'Most steps advance automatically. Follow a prompt if PowerShell or an installer displays one.'
+Write-Host 'Wait while percentages or elapsed-time messages are changing.'
+Write-Host 'If PowerShell visibly waits after a completed download, click the window and press Enter once.'
+Write-Host 'If selecting console text paused the window, press Escape or Enter to resume it.'
+Write-Host 'Do not close this window before a success or error message appears.'
 Write-Host ''
 
 for ($itemIndex = 0; $itemIndex -lt $missing.Count; $itemIndex++) {
