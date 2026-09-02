@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Vyrium/BLRevive-Steam-Play-Fix/releases/latest"><strong>Download the latest player release</strong></a>
+  <a href="https://github.com/Vyrium/BLRevive-Play-Fix/releases/latest"><strong>Download the latest player release</strong></a>
   ·
   <a href="https://blrevive.gitlab.io/wiki/guides/user/getting-started/">BLRevive setup guide</a>
   ·
@@ -26,7 +26,7 @@ You need a Windows PC, Steam installed and signed in, and a copy of the Blacklig
 1. **Get Blacklight: Retribution.**
    - **Already own it on Steam?** Install it normally from your Steam Library.
    - **Do not own it on Steam?** Follow BLRevive's [Download BL:R guide](https://blrevive.gitlab.io/wiki/guides/user/getting-started/#download-blr) and extract the community archive somewhere permanent.
-2. **Download this tool** from the [latest release page](https://github.com/Vyrium/BLRevive-Steam-Play-Fix/releases/latest), then extract the entire ZIP.
+2. **Download this tool** from the [latest release page](https://github.com/Vyrium/BLRevive-Play-Fix/releases/latest), then extract the entire ZIP.
 3. **Double-click `Install BLRevive Steam Play Fix.bat`.**
 4. **Choose your Blacklight folder if asked.** You can select either the main `blacklightretribution` folder or its `Binaries\Win32` folder. Approve the Windows administrator prompt if missing game components need to be installed.
 5. **Play.**
