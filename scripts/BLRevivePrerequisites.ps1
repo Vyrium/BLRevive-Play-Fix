@@ -1,7 +1,8 @@
 param(
     [switch]$Install,
     [switch]$CheckOnly,
-    [string]$DownloadDirectory
+    [string]$DownloadDirectory,
+    [string]$LogPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,11 +10,87 @@ $ErrorActionPreference = 'Stop'
 if (-not $DownloadDirectory) {
     $DownloadDirectory = Join-Path $env:LOCALAPPDATA 'BLReviveSteamPlayFix\Prerequisites'
 }
+if (-not $LogPath) {
+    $LogPath = Join-Path $DownloadDirectory 'BLRevivePrerequisites.log'
+}
+
+$script:TranscriptStarted = $false
+if ($Install) {
+    New-Item -ItemType Directory -Path (Split-Path -Parent $LogPath) -Force | Out-Null
+    try {
+        Start-Transcript -Path $LogPath -Append -Force | Out-Null
+        $script:TranscriptStarted = $true
+    } catch {
+        Write-Host ('[!] The prerequisite log could not be started: ' + $_.Exception.Message) -ForegroundColor Yellow
+    }
+}
+
+function Stop-PrerequisiteTranscript {
+    if ($script:TranscriptStarted) {
+        try { Stop-Transcript | Out-Null } catch {}
+        $script:TranscriptStarted = $false
+    }
+}
+
+trap {
+    Write-Host ''
+    Write-Host ('[!] Prerequisite setup stopped: ' + $_.Exception.Message) -ForegroundColor Red
+    Write-Host ('[!] Detailed log: ' + $LogPath) -ForegroundColor Yellow
+    Stop-PrerequisiteTranscript
+    exit 1
+}
 
 function Write-Status([string]$Text, [ValidateSet('Info', 'Success', 'Warning')] [string]$Kind = 'Info') {
     $prefix = if ($Kind -eq 'Warning') { '[!]' } else { '[+]' }
     $color = if ($Kind -eq 'Warning') { 'Yellow' } elseif ($Kind -eq 'Success') { 'Green' } else { 'Cyan' }
     Write-Host ($prefix + ' ' + $Text) -ForegroundColor $color
+}
+
+function Format-ByteSize([long]$Bytes) {
+    if ($Bytes -ge 1GB) { return ('{0:N1} GB' -f ($Bytes / 1GB)) }
+    if ($Bytes -ge 1MB) { return ('{0:N1} MB' -f ($Bytes / 1MB)) }
+    if ($Bytes -ge 1KB) { return ('{0:N1} KB' -f ($Bytes / 1KB)) }
+    return ($Bytes.ToString() + ' bytes')
+}
+
+function Invoke-VisibleDownload([string]$Name, [string]$Url, [string]$Destination) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $client = New-Object Net.WebClient
+    $inputStream = $null
+    $outputStream = $null
+
+    try {
+        $client.Headers.Add('User-Agent', 'BLRevive-Steam-Play-Fix/1.1')
+        $inputStream = $client.OpenRead($Url)
+        $lengthText = $client.ResponseHeaders['Content-Length']
+        $totalBytes = 0L
+        if ($lengthText) { [long]::TryParse($lengthText, [ref]$totalBytes) | Out-Null }
+
+        $outputStream = [IO.File]::Open($Destination, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        $buffer = New-Object byte[] 65536
+        $downloaded = 0L
+
+        while (($read = $inputStream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $outputStream.Write($buffer, 0, $read)
+            $downloaded += $read
+
+            if ($totalBytes -gt 0) {
+                $percent = [Math]::Min(100, [Math]::Floor(($downloaded * 100.0) / $totalBytes))
+                $status = ('{0} of {1} ({2}%)' -f (Format-ByteSize $downloaded), (Format-ByteSize $totalBytes), $percent)
+                Write-Progress -Activity ('Downloading ' + $Name) -Status $status -PercentComplete $percent
+            } else {
+                Write-Progress -Activity ('Downloading ' + $Name) -Status ((Format-ByteSize $downloaded) + ' received')
+            }
+        }
+
+        Write-Progress -Activity ('Downloading ' + $Name) -Completed
+        Write-Status ('Download complete: ' + (Format-ByteSize $downloaded) + ' saved to ' + $Destination) 'Success'
+    } finally {
+        Write-Progress -Activity ('Downloading ' + $Name) -Completed
+        if ($outputStream) { $outputStream.Dispose() }
+        if ($inputStream) { $inputStream.Dispose() }
+        $client.Dispose()
+    }
 }
 
 function Get-X86SystemDirectory {
@@ -139,39 +216,59 @@ function Get-SignedDownload([string]$Name, [string]$Url, [string]$FileName, [str
     }
 
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-        Write-Status ('Downloading ' + $Name + ' from its publisher...')
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $client = New-Object Net.WebClient
+        Write-Status ('Downloading ' + $Name + '.')
+        Write-Host ('    Source: ' + $Url)
+        Write-Host ('    Save to: ' + $path)
+        Write-Host '    No input is required. Keep this window open and wait for the progress display.'
         try {
-            $client.Headers.Add('User-Agent', 'BLRevive-Steam-Play-Fix/1.1')
-            $client.DownloadFile($Url, $path)
+            Invoke-VisibleDownload $Name $Url $path
         } catch {
             Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
             throw "Could not download $Name from its publisher. Check the internet connection and run the installer again. $($_.Exception.Message)"
-        } finally {
-            $client.Dispose()
         }
     } else {
-        Write-Status ('Using the cached download for ' + $Name + '.')
+        Write-Status ('Using the cached download for ' + $Name + ': ' + $path)
     }
 
+    Write-Status ('Verifying the publisher signature for ' + $Name + '...')
     $signature = Get-AuthenticodeSignature -LiteralPath $path
     $signer = if ($signature.SignerCertificate) { $signature.SignerCertificate.Subject } else { '' }
     if ($signature.Status -ne [Management.Automation.SignatureStatus]::Valid -or $signer -notmatch $SignerPattern) {
         Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
         throw "$Name did not have the expected valid publisher signature. The downloaded file was discarded."
     }
+    Write-Status ('Publisher signature verified: ' + $signer) 'Success'
 
     return $path
 }
 
 function Invoke-Installer([string]$Name, [string]$FilePath, [string[]]$Arguments) {
-    Write-Status ('Installing ' + $Name + '...')
-    $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -Wait -PassThru
+    Write-Status ('Starting the silent installer for ' + $Name + '.')
+    Write-Host ('    Installer: ' + $FilePath)
+    Write-Host '    No input is required. The installer may take several minutes and may not show another window.'
+    Write-Host '    Please keep this window open. Progress will continue automatically.'
+
+    $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+    $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -PassThru
+    $nextNotice = 15
+    while (-not $process.HasExited) {
+        $elapsed = [Math]::Floor($stopwatch.Elapsed.TotalSeconds)
+        Write-Progress -Activity ('Installing ' + $Name) -Status ("Working... $elapsed seconds elapsed")
+        if ($elapsed -ge $nextNotice) {
+            Write-Host ("    Still installing $Name... $elapsed seconds elapsed. No action is needed.")
+            $nextNotice += 15
+        }
+        Start-Sleep -Seconds 1
+        $process.Refresh()
+    }
+    $stopwatch.Stop()
+    Write-Progress -Activity ('Installing ' + $Name) -Completed
+
     if ($process.ExitCode -notin @(0, 1638, 3010)) {
         throw "$Name failed with installer exit code $($process.ExitCode)."
     }
     if ($process.ExitCode -eq 3010) { $script:RestartRequired = $true }
+    Write-Status ("Finished $Name in $([Math]::Ceiling($stopwatch.Elapsed.TotalSeconds)) seconds (exit code $($process.ExitCode)).") 'Success'
 }
 
 function Install-DirectX {
@@ -221,6 +318,7 @@ foreach ($item in $state) {
 $missing = @($state | Where-Object { -not $_.Installed })
 if ($missing.Count -eq 0) {
     Write-Status 'All Blacklight prerequisites are ready.' 'Success'
+    Stop-PrerequisiteTranscript
     exit 0
 }
 
@@ -229,7 +327,19 @@ if ($CheckOnly -or -not $Install) { exit 2 }
 Assert-Administrator
 $script:RestartRequired = $false
 
-foreach ($item in $missing) {
+Write-Host ''
+Write-Host 'Installation information' -ForegroundColor White
+Write-Host '------------------------'
+Write-Host ('Missing components: ' + $missing.Count)
+Write-Host ('Download cache: ' + $DownloadDirectory)
+Write-Host 'Downloads come directly from Microsoft or NVIDIA using the URLs shown below.'
+Write-Host 'No keyboard input is required during downloads or silent installation.'
+Write-Host 'Do not press Enter or close this window. Each step advances automatically.'
+Write-Host ''
+
+for ($itemIndex = 0; $itemIndex -lt $missing.Count; $itemIndex++) {
+    $item = $missing[$itemIndex]
+    Write-Host ('[{0}/{1}] {2}' -f ($itemIndex + 1), $missing.Count, $item.Name) -ForegroundColor White
     switch ($item.Id) {
         'DirectX' { Install-DirectX }
         'VC2010x86' {
@@ -253,6 +363,7 @@ foreach ($item in $missing) {
         'DotNet4' { Install-DotNet4 }
         'PhysX' { Install-PhysX }
     }
+    Write-Host ''
 }
 
 $remaining = @(Get-PrerequisiteState | Where-Object { -not $_.Installed })
@@ -265,4 +376,6 @@ Write-Status 'All Blacklight prerequisites were installed successfully.' 'Succes
 if ($script:RestartRequired) {
     Write-Status 'Windows requested a restart. Restart before playing Blacklight.' 'Warning'
 }
+Write-Status ('Prerequisite log saved to: ' + $LogPath) 'Success'
+Stop-PrerequisiteTranscript
 exit 0

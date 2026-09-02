@@ -1,21 +1,79 @@
+param(
+    [string]$GameDirectory
+)
+
 $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $GameExeName = 'FoxGame-win32-Shipping.exe'
 
+function Resolve-GameDirectory([string]$Path) {
+    if ([String]::IsNullOrWhiteSpace($Path)) { return $null }
+    $trimmed = $Path.Trim().Trim('"')
+
+    foreach ($candidate in @($trimmed, (Join-Path $trimmed 'Binaries\Win32'))) {
+        if (Test-Path -LiteralPath (Join-Path $candidate $GameExeName) -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+    return $null
+}
+
+function Select-GameDirectoryWithDialog {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dialog.Description = 'Select the Blacklight: Retribution folder or its Binaries\Win32 folder.'
+        $dialog.ShowNewFolderButton = $false
+        if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            return Resolve-GameDirectory $dialog.SelectedPath
+        }
+    } catch {
+        Write-Host ('The Windows folder picker could not be opened: ' + $_.Exception.Message) -ForegroundColor Yellow
+    }
+    return $null
+}
+
 function Find-GameDirectory {
+    $explicit = Resolve-GameDirectory $GameDirectory
+    if ($explicit) { return $explicit }
+
     $parent = Split-Path -Parent $ScriptDir
-    if (Test-Path (Join-Path $parent $GameExeName)) { return $parent }
-    if (Test-Path (Join-Path $ScriptDir $GameExeName)) { return $ScriptDir }
+    foreach ($candidate in @($parent, $ScriptDir)) {
+        $resolved = Resolve-GameDirectory $candidate
+        if ($resolved) { return $resolved }
+    }
+
+    $installInfo = Join-Path $ScriptDir 'install-info.txt'
+    if (Test-Path -LiteralPath $installInfo -PathType Leaf) {
+        $savedDirectory = Get-Content -LiteralPath $installInfo |
+            Where-Object { $_ -like 'GameDirectory=*' } |
+            Select-Object -First 1
+        if ($savedDirectory) {
+            $resolved = Resolve-GameDirectory $savedDirectory.Substring('GameDirectory='.Length)
+            if ($resolved) { return $resolved }
+        }
+    }
+
     return $null
 }
 
 $GameDir = Find-GameDirectory
 if (-not $GameDir) {
-    Write-Host 'Could not determine the Blacklight Binaries\Win32 directory.' -ForegroundColor Red
+    Write-Host 'Blacklight: Retribution was not found automatically.' -ForegroundColor Yellow
+    Write-Host 'Opening a folder picker. Select the game folder or its Binaries\Win32 folder.'
+    $GameDir = Select-GameDirectoryWithDialog
+}
+if (-not $GameDir) {
+    Write-Host 'Enter the Blacklight: Retribution folder or its Binaries\Win32 folder:'
+    $GameDir = Resolve-GameDirectory (Read-Host 'Path')
+}
+if (-not $GameDir) {
+    Write-Host 'FoxGame-win32-Shipping.exe was not found in the selected location.' -ForegroundColor Red
     exit 1
 }
 
-$ReportPath = Join-Path $ScriptDir 'BLReviveSteamPlayFix-Diagnostic.txt'
+$ReportDirectory = if ((Split-Path -Leaf $ScriptDir) -eq 'scripts') { Split-Path -Parent $ScriptDir } else { $ScriptDir }
+$ReportPath = Join-Path $ReportDirectory 'BLReviveSteamPlayFix-Diagnostic.txt'
 $lines = New-Object System.Collections.Generic.List[string]
 
 function Add-Line([string]$Text = '') {
@@ -120,6 +178,19 @@ if (Test-Path $uninstallLog) {
     foreach ($line in Get-Content -LiteralPath $uninstallLog -Tail 30) { Add-Line $line }
 } else {
     Add-Line 'Uninstall log: not present (created when Uninstall.bat is run)'
+}
+
+Add-Line ''
+$prerequisiteLog = Join-Path $env:LOCALAPPDATA 'BLReviveSteamPlayFix\Prerequisites\BLRevivePrerequisites.log'
+if (Test-Path -LiteralPath $prerequisiteLog -PathType Leaf) {
+    Add-Line ('Prerequisite install log: PRESENT (' + (Get-Item -LiteralPath $prerequisiteLog).Length + ' bytes)')
+    Add-Line ('  Location: ' + $prerequisiteLog)
+    Add-Line ''
+    Add-Line 'Last 50 prerequisite-log lines:'
+    Add-Line '-------------------------------'
+    foreach ($line in Get-Content -LiteralPath $prerequisiteLog -Tail 50) { Add-Line $line }
+} else {
+    Add-Line ('Prerequisite install log: not present at ' + $prerequisiteLog)
 }
 
 $lines | Set-Content -LiteralPath $ReportPath -Encoding UTF8

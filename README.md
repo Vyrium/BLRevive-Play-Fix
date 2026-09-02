@@ -45,13 +45,13 @@ You do not need to copy DLL files, enter launch options, edit configuration file
 
 ## If something does not work
 
-Run **`Diagnose.bat`** from the folder where you extracted this tool. It creates:
+Run **`Diagnose.bat`** from the folder where you extracted this tool. If the game is elsewhere, select the Blacklight folder or its `Binaries\Win32` folder when asked. It creates:
 
 ```text
 BLReviveSteamPlayFix-Diagnostic.txt
 ```
 
-Attach that file when asking the BLRevive community for help. It reports the launcher, configuration, game files, prerequisite status, and recent launcher activity. Common password and authentication-token values are redacted.
+Attach that file when asking the BLRevive community for help. It reports the launcher, configuration, game files, prerequisite status, the latest prerequisite installation log, and recent launcher activity. Common password and authentication-token values are redacted.
 
 Common fixes:
 
@@ -104,6 +104,12 @@ Downloads are cached in:
 ```
 
 The installer downloads redistributables only from Microsoft or NVIDIA endpoints and checks the Windows Authenticode signature and expected publisher before executing each file. An incomplete or untrusted cached download is deleted and downloaded again.
+
+Download, verification, and installation details are recorded in:
+
+```text
+%LOCALAPPDATA%\BLReviveSteamPlayFix\Prerequisites\BLRevivePrerequisites.log
+```
 
 ### What changes in the game folder
 

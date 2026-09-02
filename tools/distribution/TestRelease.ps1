@@ -54,6 +54,19 @@ try {
     Copy-Item -LiteralPath $official -Destination (Join-Path $gameDir 'FoxGame-win32-Shipping_BE.exe')
     Set-Content -LiteralPath (Join-Path $gameDir 'steam_appid.txt') -Value '209870' -Encoding ASCII
 
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveDiagnostics.ps1') -GameDirectory $gameDir
+    $packageDiagnoseExit = $LASTEXITCODE
+    if ($packageDiagnoseExit -ne 0) {
+        throw "Package-root archive diagnostic test failed with exit code $packageDiagnoseExit."
+    }
+    $packageDiagnosticReport = Join-Path $packageDir 'BLReviveSteamPlayFix-Diagnostic.txt'
+    if (-not (Test-Path -LiteralPath $packageDiagnosticReport -PathType Leaf)) {
+        throw 'Package-root diagnostics did not create its report beside Diagnose.bat.'
+    }
+    if ((Get-Content -Raw -LiteralPath $packageDiagnosticReport) -notmatch [regex]::Escape($gameDir)) {
+        throw 'Package-root diagnostics did not report the selected archive game directory.'
+    }
+
     $originalPayloadBytes = [IO.File]::ReadAllBytes($payloadLauncher)
     [byte[]]$tamperedPayloadBytes = $originalPayloadBytes.Clone()
     $tamperedPayloadBytes[0] = $tamperedPayloadBytes[0] -bxor 1
@@ -146,6 +159,7 @@ try {
         PayloadSHA256 = $actualHash.ToLowerInvariant()
         TamperedPayloadRejected = $true
         InstallExit = $installExit
+        PackageDiagnoseExit = $packageDiagnoseExit
         DiagnoseExit = $diagnoseExit
         UninstallExit = $uninstallExit
         OfficialLauncherRestored = $true

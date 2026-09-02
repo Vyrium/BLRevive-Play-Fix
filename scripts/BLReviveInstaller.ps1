@@ -241,6 +241,7 @@ function Test-Administrator {
 
 function Invoke-PrerequisiteSetup {
     $script = Join-Path $PackageDir 'scripts\BLRevivePrerequisites.ps1'
+    $prerequisiteLog = Join-Path $env:LOCALAPPDATA 'BLReviveSteamPlayFix\Prerequisites\BLRevivePrerequisites.log'
     if (-not (Test-Path -LiteralPath $script -PathType Leaf)) {
         throw "The player package is incomplete. Missing: $script"
     }
@@ -253,11 +254,16 @@ function Invoke-PrerequisiteSetup {
 
     Write-Warn 'One or more Blacklight prerequisites are missing.'
     Write-Warn 'Windows may ask for administrator permission while they are installed.'
+    Write-Host 'The prerequisite step is automatic. You do not need to press Enter.'
+    Write-Host 'Keep all installer windows open and wait for a success or error message.'
 
     if (Test-Administrator) {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Install
         $installExit = $LASTEXITCODE
     } else {
+        Write-Step 'Opening the prerequisite installer with administrator permission.'
+        Write-Host 'Approve the Windows prompt. A second PowerShell window will show download and install progress.'
+        Write-Host 'This window will wait automatically. Do not press Enter or close either window.'
         $quotedScript = '"' + $script.Replace('"', '""') + '"'
         $process = Start-Process -FilePath 'powershell.exe' -Verb RunAs -Wait -PassThru -ArgumentList (
             '-NoProfile -ExecutionPolicy Bypass -File ' + $quotedScript + ' -Install'
@@ -266,6 +272,14 @@ function Invoke-PrerequisiteSetup {
     }
 
     if ($installExit -ne 0) {
+        Write-Warn ('Prerequisite installation log: ' + $prerequisiteLog)
+        if (Test-Path -LiteralPath $prerequisiteLog -PathType Leaf) {
+            Write-Host ''
+            Write-Host 'Last prerequisite log lines:' -ForegroundColor Yellow
+            Write-Host '----------------------------'
+            Get-Content -LiteralPath $prerequisiteLog -Tail 25 | ForEach-Object { Write-Host $_ }
+            Write-Host ''
+        }
         throw "Blacklight prerequisite installation failed or was cancelled (exit code $installExit)."
     }
 }

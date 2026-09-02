@@ -18,6 +18,12 @@ BLRevive Steam Play Fix - Changelog
 - Uninstall restores/removes archive-specific integration without removing
   shared system prerequisites that other games may need.
 - Diagnostics now report prerequisite readiness.
+- Added visible download percentages, exact source and cache paths, signature
+  verification status, elapsed install time, and clearer waiting instructions.
+- Prerequisite failures now remain in a persistent log and the main installer
+  shows its final lines instead of reporting only an elevated-process exit code.
+- Diagnose.bat now prompts archive users to select their game folder and includes
+  the prerequisite installation log in its support report.
 
 1.0.0
 -----
