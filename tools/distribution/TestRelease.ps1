@@ -74,7 +74,7 @@ try {
     try {
         [IO.File]::WriteAllBytes($payloadLauncher, $tamperedPayloadBytes)
         $ErrorActionPreference = 'Continue'
-        $null = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop -SkipSteamShortcut 2>&1
+        $null = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop 2>&1
         $tamperExit = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $savedErrorActionPreference
@@ -84,7 +84,7 @@ try {
         throw 'Installer accepted a launcher whose bytes did not match the release hash.'
     }
 
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop -SkipSteamShortcut
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop
     $installExit = $LASTEXITCODE
     if ($installExit -ne 0) { throw "Install test failed with exit code $installExit." }
 
@@ -128,9 +128,9 @@ try {
     if ((Get-Content -Raw -LiteralPath (Join-Path $gameDir 'steam_appid.txt')).Trim() -ne '480') {
         throw 'Archive installation did not configure Steam compatibility AppID 480.'
     }
-    $testShortcut = Join-Path $testDesktop 'Play BLRevive.lnk'
+    $testShortcut = Join-Path $testDesktop 'Blacklight Retribution.lnk'
     if (-not (Test-Path -LiteralPath $testShortcut -PathType Leaf)) {
-        throw 'Archive installation did not create its Play BLRevive shortcut.'
+        throw 'Archive installation did not create its Blacklight Retribution shortcut.'
     }
 
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $supportDir 'BLReviveDiagnostics.ps1')

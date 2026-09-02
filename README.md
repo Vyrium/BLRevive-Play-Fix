@@ -31,7 +31,7 @@ You need a Windows PC, Steam installed and signed in, and a copy of the Blacklig
 4. **Choose your Blacklight folder if asked.** You can select either the main `blacklightretribution` folder or its `Binaries\Win32` folder. Approve the Windows administrator prompt if missing game components need to be installed.
 5. **Play.**
    - **Steam owner:** open Blacklight: Retribution in your Steam Library and press **PLAY**.
-   - **Archive player:** Steam opens an **Add Non-Steam Game** window with `Play BLRevive.exe` selected. Click **Add Selected Programs**, then launch **Play BLRevive** from your Steam Library.
+   - **Archive player:** double-click the **Blacklight Retribution** desktop shortcut. Adding the launcher to Steam is optional: use **Games → Add a Non-Steam Game to My Library**, then select `Play BLRevive.exe` from `[BLR]\Binaries\Win32` and confirm it in Steam.
 
 You do not need to copy DLL files, enter launch options, edit configuration files, or install old game components by hand.
 
@@ -39,7 +39,7 @@ You do not need to copy DLL files, enter launch options, edit configuration file
 
 - Connects the original Blacklight client to the BLRevive ZCure and Presence services.
 - Makes Steam's normal **PLAY** button work for existing owners.
-- Adds **Play BLRevive** to an archive player's Steam Library and creates a desktop fallback shortcut.
+- Creates a **Blacklight Retribution** desktop shortcut for archive players. Steam Library integration remains an optional player-confirmed step.
 - Detects and installs the original DirectX, Visual C++, .NET, and PhysX requirements that Steam would normally handle.
 - Preserves the real Blacklight game executable instead of patching it.
 
@@ -57,7 +57,7 @@ Common fixes:
 
 - **The installer cannot find Blacklight:** select the extracted game folder or `Binaries\Win32` when the folder picker opens.
 - **Steam Verify replaced the launcher:** run `Install BLRevive Steam Play Fix.bat` again.
-- **The game is missing from an archive player's Steam Library:** in Steam, select **Games → Add a Non-Steam Game to My Library**, browse to `[BLR]\Binaries\Win32\Play BLRevive.exe`, and add it.
+- **Optional Steam Library entry:** in Steam, select **Games → Add a Non-Steam Game to My Library**, browse to `[BLR]\Binaries\Win32\Play BLRevive.exe`, tick it, and click **Add Selected Programs**.
 - **The game still reports a missing DLL:** run the installer again, allow the administrator prompt, and include the diagnostic report if it still fails.
 
 ## Uninstall
@@ -67,7 +67,7 @@ Double-click **`Uninstall.bat`** in the extracted player package.
 - For Steam owners, the original Steam/BattlEye launcher is restored.
 - For archive players, the managed launcher, AppID file, and desktop shortcut are removed or restored to their previous state.
 - Shared Windows prerequisites remain installed because other games may use them.
-- Remove the **Play BLRevive** entry from the Steam Library separately. The uninstaller does not edit Steam's binary shortcut database.
+- Remove any optional **Play BLRevive** entry from the Steam Library separately. The uninstaller does not edit Steam's binary shortcut database.
 
 ---
 
@@ -80,7 +80,7 @@ The sections below document the installer, launcher, downloaded prerequisites, a
 | Selected game copy | Detection | Result |
 | --- | --- | --- |
 | Licensed Steam installation | Its directory matches a Steam library containing `appmanifest_209870.acf` | Preserves AppID `209870`, relies on Steam for prerequisites, and replaces Steam's obsolete BattlEye bootstrap with the BLRevive launcher. |
-| Community archive | No matching licensed Steam manifest | Installs missing prerequisites, manages `steam_appid.txt` with AppID `480`, installs `Play BLRevive.exe`, creates a desktop shortcut, and opens Steam's Add Non-Steam Game flow. |
+| Community archive | No matching licensed Steam manifest | Installs missing prerequisites, manages `steam_appid.txt` with AppID `480`, installs `Play BLRevive.exe`, and creates a Blacklight Retribution desktop shortcut. Steam Library addition is optional and must be confirmed by the player. |
 
 AppID `480` follows the [BLRevive ZCure instructions](https://blrevive.gitlab.io/wiki/guides/user/ZCure/) for players who do not own AppID `209870`.
 
@@ -118,7 +118,7 @@ Download, verification, and installation details are recorded in:
 | `FoxGame-win32-Shipping.exe` | The existing real Blacklight executable. It is never modified. |
 | `FoxGame-win32-Shipping_BE.exe` | BLRevive compatibility launcher installed under the filename expected by Steam. |
 | `FoxGame-win32-Shipping_BE.official-backup.exe` | Preserved original Steam/BattlEye launcher, when one exists. |
-| `Play BLRevive.exe` | Launcher used by archive installations and their Non-Steam Game entry. |
+| `Play BLRevive.exe` | Launcher used by archive installations and their optional Non-Steam Game entry. The visible desktop shortcut is named Blacklight Retribution. |
 | `steam_appid.txt` | Set to `480` only for archive mode. Any different pre-existing file is backed up for uninstall. |
 | `BLReviveLauncher.ini` | ZCure and Presence endpoint configuration. Existing configuration is preserved. |
 | `BLReviveSteamLauncher.log` | Rotating runtime diagnostic log created when the launcher runs. |

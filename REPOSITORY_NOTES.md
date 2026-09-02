@@ -25,9 +25,10 @@ expands the original Steam-owner flow to support archive installations.
   components on the developer machine as part of a package test.
 - Archive mode is selected only when the chosen game directory does not match
   a Steam library containing `appmanifest_209870.acf`. It manages AppID `480`
-  and creates `Play BLRevive.exe`, a desktop shortcut, and a preselected Steam
-  Add Non-Steam Game flow while preserving any pre-existing AppID file. Do not
-  write Steam's binary `shortcuts.vdf` directly.
+  and creates `Play BLRevive.exe` plus a Blacklight Retribution desktop
+  shortcut while preserving any pre-existing AppID file. Steam Library addition
+  remains a manual player-confirmed step; do not write Steam's binary
+  `shortcuts.vdf` directly.
 - The 1.1.0 player installer validates and copies the prebuilt launcher from the
   generated release payload. It never compiles code on the player's computer.
   `tools/distribution/BuildRelease.ps1` creates and smoke-tests the player ZIP.

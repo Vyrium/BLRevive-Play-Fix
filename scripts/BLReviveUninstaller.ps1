@@ -380,7 +380,7 @@ if ($ArchiveMode -and $ArchiveShortcut) {
             $shortcut = $shell.CreateShortcut($shortcutFull)
             if ($shortcut.TargetPath -eq $ArchiveLauncher) {
                 Remove-Item -LiteralPath $shortcutFull -Force
-                Write-Status 'Removed the Play BLRevive desktop shortcut.' 'Success'
+                Write-Status 'Removed the Blacklight Retribution desktop shortcut.' 'Success'
             }
         }
     } catch {

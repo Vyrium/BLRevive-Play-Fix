@@ -1,8 +1,7 @@
 param(
     [string]$GameDirectory,
     [switch]$SkipPrerequisites,
-    [string]$ShortcutDirectory,
-    [switch]$SkipSteamShortcut
+    [string]$ShortcutDirectory
 )
 
 $ErrorActionPreference = 'Stop'
@@ -303,16 +302,16 @@ function New-ArchivePlayShortcut([string]$LauncherPath) {
     if (-not $desktop) { return $null }
     New-Item -ItemType Directory -Path $desktop -Force | Out-Null
 
-    $shortcutPath = Join-Path $desktop 'Play BLRevive.lnk'
+    $shortcutPath = Join-Path $desktop 'Blacklight Retribution.lnk'
     $shell = New-Object -ComObject WScript.Shell
     if (Test-Path -LiteralPath $shortcutPath -PathType Leaf) {
         try {
             $existing = $shell.CreateShortcut($shortcutPath)
             if ($existing.TargetPath -and $existing.TargetPath -ne $LauncherPath) {
-                $shortcutPath = Join-Path $desktop 'Play BLRevive (Blacklight Retribution).lnk'
+                $shortcutPath = Join-Path $desktop 'Blacklight Retribution (BLRevive).lnk'
             }
         } catch {
-            $shortcutPath = Join-Path $desktop 'Play BLRevive (Blacklight Retribution).lnk'
+            $shortcutPath = Join-Path $desktop 'Blacklight Retribution (BLRevive).lnk'
         }
     }
 
@@ -323,29 +322,6 @@ function New-ArchivePlayShortcut([string]$LauncherPath) {
     $shortcut.Description = 'Play Blacklight: Retribution on BLRevive'
     $shortcut.Save()
     return $shortcutPath
-}
-
-function Open-SteamAddNonSteamGame([string]$LauncherPath) {
-    $steamExe = $null
-    foreach ($root in Get-SteamRoots) {
-        $candidate = Join-Path $root 'steam.exe'
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-            $steamExe = $candidate
-            break
-        }
-    }
-
-    if (-not $steamExe) {
-        Write-Warn 'Steam was not found. Install and sign in to Steam, then add Play BLRevive.exe as a Non-Steam Game.'
-        return $false
-    }
-
-    $encodedPath = [Uri]::EscapeDataString($LauncherPath)
-    $uri = 'steam://addnonsteamgame/' + $encodedPath
-    Start-Process -FilePath $steamExe -ArgumentList $uri | Out-Null
-    Write-Step 'Opened Steam with Play BLRevive selected for the Non-Steam library.'
-    Write-Warn 'In Steam, click Add Selected Programs to confirm the shortcut.'
-    return $true
 }
 
 Write-Host ("BLRevive Steam Play Fix " + $Version)
@@ -393,7 +369,6 @@ Write-Step "Validated prebuilt BLRevive launcher (SHA-256: $actualHash)"
 $ArchiveMode = -not (Test-LicensedSteamInstallation $GameDir)
 $SteamAppIdManaged = $false
 $ArchiveShortcut = $null
-$SteamShortcutRequested = $false
 
 if (-not $ArchiveMode) {
     Write-Step 'Licensed Steam installation detected; Steam manages the original game prerequisites.'
@@ -499,16 +474,9 @@ if ($ArchiveMode) {
         Write-Warn "You can play by opening: $ArchiveLauncher"
     }
 
-    if ($SkipSteamShortcut) {
-        Write-Warn 'Steam Non-Steam Game setup was skipped by an explicit developer/test option.'
-    } else {
-        try {
-            $SteamShortcutRequested = Open-SteamAddNonSteamGame $ArchiveLauncher
-        } catch {
-            Write-Warn ('Steam could not open the Add Non-Steam Game window: ' + $_.Exception.Message)
-            Write-Warn 'Use Games -> Add a Non-Steam Game in Steam and select Play BLRevive.exe.'
-        }
-    }
+    Write-Step 'The Blacklight Retribution desktop shortcut is ready.'
+    Write-Host 'Optional Steam Library entry: Games -> Add a Non-Steam Game to My Library,'
+    Write-Host 'then browse to and select Play BLRevive.exe in this Blacklight folder.'
 }
 
 $ShellIconRefreshRequested = Request-WindowsShellIconRefresh $TargetLauncher
@@ -530,7 +498,6 @@ $installInfo = @(
     ('ArchiveLauncher=' + $(if ($ArchiveMode) { $ArchiveLauncher } else { '' })),
     ('SteamAppIdManaged=' + $SteamAppIdManaged),
     ('ArchiveShortcut=' + $ArchiveShortcut),
-    ('SteamShortcutRequested=' + $SteamShortcutRequested),
 
     ('IconMode=EmbeddedPrebuiltBLReviveLogo'),
     ('IconSource=' + $PackagedLauncher),
@@ -544,12 +511,8 @@ Write-Host 'SUCCESS' -ForegroundColor Green
 Write-Host '-------'
 if ($ArchiveMode) {
     Write-Host 'Your archive copy is ready.'
-    if ($SteamShortcutRequested) {
-        Write-Host 'Finish by clicking Add Selected Programs in the Steam window.'
-        Write-Host 'You can then launch Play BLRevive directly from your Steam Library.'
-    } else {
-        Write-Host 'Start Steam, then use the Play BLRevive desktop shortcut.'
-    }
+    Write-Host 'Start the Blacklight Retribution desktop shortcut to play.'
+    Write-Host 'Adding Play BLRevive.exe to Steam is optional and must be confirmed in Steam.'
 } else {
     Write-Host 'Steam Play will now launch FoxGame-win32-Shipping.exe through the BLRevive wrapper.'
 }
