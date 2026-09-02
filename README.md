@@ -17,7 +17,7 @@ One simple setup for playing Blacklight: Retribution with BLRevive, whether the 
 4. If Windows asks for administrator permission, approve it so missing game prerequisites can be installed.
 5. Start the game:
    - **Steam owner:** use Blacklight: Retribution's normal **PLAY** button.
-   - **Archive player:** start Steam, then double-click the new **Play BLRevive** desktop shortcut.
+   - **Archive player:** the installer opens Steam's **Add Non-Steam Game** window with `Play BLRevive.exe` selected. Click **Add Selected Programs**, then launch **Play BLRevive** from your Steam Library. A desktop shortcut is also created as a fallback.
 
 > [!NOTE]
 > The installer finds a Steam copy automatically. For an archive copy, choose either the main *Blacklight: Retribution* folder or its `Binaries\Win32` folder in the folder picker. An internet connection is required the first time missing prerequisites are installed.
@@ -28,7 +28,7 @@ One simple setup for playing Blacklight: Retribution with BLRevive, whether the 
 - Installs the BLRevive compatibility launcher under the filename Steam expects.
 - Adds `BLReviveLauncher.ini`, which holds the BLRevive server endpoints.
 - Checks and installs Blacklight's original Steam prerequisite chain from Microsoft and NVIDIA publisher downloads.
-- Configures archive copies with Steam compatibility AppID `480` and creates a **Play BLRevive** desktop shortcut.
+- Configures archive copies with Steam compatibility AppID `480`, creates a clearly named launcher and desktop shortcut, and opens Steam's Add Non-Steam Game flow with that launcher selected.
 - Refreshes Windows Explorer so the launcher icon updates cleanly.
 
 The real game executable, `FoxGame-win32-Shipping.exe`, is never modified. No custom Steam launch options are required. Licensed Steam installations keep AppID `209870`; archive installations use AppID `480`, matching BLRevive's ZCure guide.
@@ -49,7 +49,7 @@ The setup installs only components that are missing or older than the required r
 1. Open the extracted player package.
 2. Double-click **Uninstall.bat**.
 
-For Steam owners, the original Steam launcher is restored automatically. For archive players, the wrapper, managed AppID file, and generated desktop shortcut are removed. System-wide prerequisites are left installed because other games may use them. The uninstaller leaves configuration and log files behind for troubleshooting; they are safe to delete manually.
+For Steam owners, the original Steam launcher is restored automatically. For archive players, the wrapper, managed AppID file, archive launcher, and generated desktop shortcut are removed. Remove the **Play BLRevive** entry from the Steam Library separately; the tool does not edit Steam's binary shortcut database. System-wide prerequisites are left installed because other games may use them. The uninstaller leaves configuration and log files behind for troubleshooting; they are safe to delete manually.
 
 ### Need help?
 

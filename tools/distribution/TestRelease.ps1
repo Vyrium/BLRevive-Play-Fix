@@ -61,7 +61,7 @@ try {
     try {
         [IO.File]::WriteAllBytes($payloadLauncher, $tamperedPayloadBytes)
         $ErrorActionPreference = 'Continue'
-        $null = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop 2>&1
+        $null = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop -SkipSteamShortcut 2>&1
         $tamperExit = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $savedErrorActionPreference
@@ -71,16 +71,20 @@ try {
         throw 'Installer accepted a launcher whose bytes did not match the release hash.'
     }
 
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop -SkipSteamShortcut
     $installExit = $LASTEXITCODE
     if ($installExit -ne 0) { throw "Install test failed with exit code $installExit." }
 
     $installedLauncher = Join-Path $gameDir 'FoxGame-win32-Shipping_BE.exe'
+    $archiveLauncher = Join-Path $gameDir 'Play BLRevive.exe'
     $backupLauncher = Join-Path $gameDir 'FoxGame-win32-Shipping_BE.official-backup.exe'
     $supportDir = Join-Path $gameDir 'BLReviveSteamPlayFix'
     $installedInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($installedLauncher)
     if ($installedInfo.ProductName -ne 'BLRevive Steam Play Fix') {
         throw 'Installed launcher identity is incorrect.'
+    }
+    if (([Diagnostics.FileVersionInfo]::GetVersionInfo($archiveLauncher)).ProductName -ne 'BLRevive Steam Play Fix') {
+        throw 'Archive launcher identity is incorrect.'
     }
     if ((Get-FileHash -Algorithm SHA256 -LiteralPath $backupLauncher).Hash -ne $officialHash) {
         throw 'Install test did not preserve the official launcher correctly.'
@@ -131,6 +135,9 @@ try {
     }
     if (Test-Path -LiteralPath $testShortcut) {
         throw 'Uninstall test did not remove its archive desktop shortcut.'
+    }
+    if (Test-Path -LiteralPath $archiveLauncher) {
+        throw 'Uninstall test did not remove the archive launcher.'
     }
 
     [pscustomobject]@{

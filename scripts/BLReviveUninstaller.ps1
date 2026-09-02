@@ -8,6 +8,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $LauncherName = 'FoxGame-win32-Shipping_BE.exe'
 $GameExeName = 'FoxGame-win32-Shipping.exe'
 $BackupName = 'FoxGame-win32-Shipping_BE.official-backup.exe'
+$ArchiveLauncherName = 'Play BLRevive.exe'
 $WrapperProductName = 'BLRevive Steam Play Fix'
 $UninstallLog = Join-Path $ScriptDir 'BLReviveSteamPlayFix-Uninstall.log'
 $InstallInfoPath = Join-Path $ScriptDir 'install-info.txt'
@@ -289,6 +290,7 @@ Write-Host ''
 $GameDir = Find-GameDirectory
 $Target = Join-Path $GameDir $LauncherName
 $Backup = Join-Path $GameDir $BackupName
+$ArchiveLauncher = Join-Path $GameDir $ArchiveLauncherName
 $ArchiveMode = $false
 $SteamAppIdManaged = $false
 $ArchiveShortcut = $null
@@ -376,13 +378,22 @@ if ($ArchiveMode -and $ArchiveShortcut) {
             (Test-Path -LiteralPath $shortcutFull -PathType Leaf)) {
             $shell = New-Object -ComObject WScript.Shell
             $shortcut = $shell.CreateShortcut($shortcutFull)
-            if ($shortcut.TargetPath -eq $Target) {
+            if ($shortcut.TargetPath -eq $ArchiveLauncher) {
                 Remove-Item -LiteralPath $shortcutFull -Force
                 Write-Status 'Removed the Play BLRevive desktop shortcut.' 'Success'
             }
         }
     } catch {
         Write-Status ('The desktop shortcut could not be removed: ' + $_.Exception.Message) 'Warning'
+    }
+}
+
+if ($ArchiveMode -and (Test-Path -LiteralPath $ArchiveLauncher -PathType Leaf)) {
+    if ((Get-ProductName $ArchiveLauncher) -eq $WrapperProductName) {
+        Remove-Item -LiteralPath $ArchiveLauncher -Force
+        Write-Status 'Removed the Play BLRevive archive launcher.' 'Success'
+    } else {
+        Write-Status 'Play BLRevive.exe is not the BLRevive launcher; leaving it untouched.' 'Warning'
     }
 }
 

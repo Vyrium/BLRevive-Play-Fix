@@ -13,7 +13,8 @@ BLRevive Steam Play Fix - Changelog
 - Installs only missing or outdated components and caches publisher downloads
   for retries.
 - Archive mode writes Steam compatibility AppID 480, preserves any previous
-  AppID file, and creates a Play BLRevive desktop shortcut.
+  AppID file, creates a clearly named Play BLRevive launcher and desktop
+  shortcut, and opens Steam's Add Non-Steam Game flow with it selected.
 - Uninstall restores/removes archive-specific integration without removing
   shared system prerequisites that other games may need.
 - Diagnostics now report prerequisite readiness.

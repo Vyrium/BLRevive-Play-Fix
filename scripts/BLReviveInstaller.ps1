@@ -1,7 +1,8 @@
 param(
     [string]$GameDirectory,
     [switch]$SkipPrerequisites,
-    [string]$ShortcutDirectory
+    [string]$ShortcutDirectory,
+    [switch]$SkipSteamShortcut
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,6 +13,7 @@ $PackageDir = Split-Path -Parent $ScriptDir
 $LauncherName = 'FoxGame-win32-Shipping_BE.exe'
 $GameExeName = 'FoxGame-win32-Shipping.exe'
 $CanonicalBackupName = 'FoxGame-win32-Shipping_BE.official-backup.exe'
+$ArchiveLauncherName = 'Play BLRevive.exe'
 $SupportDirName = 'BLReviveSteamPlayFix'
 
 function Write-Step([string]$Text) {
@@ -307,6 +309,29 @@ function New-ArchivePlayShortcut([string]$LauncherPath) {
     return $shortcutPath
 }
 
+function Open-SteamAddNonSteamGame([string]$LauncherPath) {
+    $steamExe = $null
+    foreach ($root in Get-SteamRoots) {
+        $candidate = Join-Path $root 'steam.exe'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $steamExe = $candidate
+            break
+        }
+    }
+
+    if (-not $steamExe) {
+        Write-Warn 'Steam was not found. Install and sign in to Steam, then add Play BLRevive.exe as a Non-Steam Game.'
+        return $false
+    }
+
+    $encodedPath = [Uri]::EscapeDataString($LauncherPath)
+    $uri = 'steam://addnonsteamgame/' + $encodedPath
+    Start-Process -FilePath $steamExe -ArgumentList $uri | Out-Null
+    Write-Step 'Opened Steam with Play BLRevive selected for the Non-Steam library.'
+    Write-Warn 'In Steam, click Add Selected Programs to confirm the shortcut.'
+    return $true
+}
+
 Write-Host ("BLRevive Steam Play Fix " + $Version)
 Write-Host '================================'
 Write-Host ''
@@ -316,6 +341,7 @@ Write-Step "Blacklight installation: $GameDir"
 
 $GameExe = Join-Path $GameDir $GameExeName
 $TargetLauncher = Join-Path $GameDir $LauncherName
+$ArchiveLauncher = Join-Path $GameDir $ArchiveLauncherName
 $BackupLauncher = Join-Path $GameDir $CanonicalBackupName
 $SupportDir = Join-Path $GameDir $SupportDirName
 $TargetConfig = Join-Path $GameDir 'BLReviveLauncher.ini'
@@ -351,6 +377,7 @@ Write-Step "Validated prebuilt BLRevive launcher (SHA-256: $actualHash)"
 $ArchiveMode = -not (Test-LicensedSteamInstallation $GameDir)
 $SteamAppIdManaged = $false
 $ArchiveShortcut = $null
+$SteamShortcutRequested = $false
 
 if (-not $ArchiveMode) {
     Write-Step 'Licensed Steam installation detected; Steam manages the original game prerequisites.'
@@ -445,12 +472,26 @@ if ($ArchiveMode) {
         $SteamAppIdManaged = $true
     }
 
+    Write-Step "Installing archive launcher as $ArchiveLauncherName"
+    Copy-Item -LiteralPath $PackagedLauncher -Destination $ArchiveLauncher -Force
+
     try {
-        $ArchiveShortcut = New-ArchivePlayShortcut $TargetLauncher
+        $ArchiveShortcut = New-ArchivePlayShortcut $ArchiveLauncher
         if ($ArchiveShortcut) { Write-Step "Created desktop shortcut: $ArchiveShortcut" }
     } catch {
         Write-Warn ('The desktop shortcut could not be created: ' + $_.Exception.Message)
-        Write-Warn "You can play by opening: $TargetLauncher"
+        Write-Warn "You can play by opening: $ArchiveLauncher"
+    }
+
+    if ($SkipSteamShortcut) {
+        Write-Warn 'Steam Non-Steam Game setup was skipped by an explicit developer/test option.'
+    } else {
+        try {
+            $SteamShortcutRequested = Open-SteamAddNonSteamGame $ArchiveLauncher
+        } catch {
+            Write-Warn ('Steam could not open the Add Non-Steam Game window: ' + $_.Exception.Message)
+            Write-Warn 'Use Games -> Add a Non-Steam Game in Steam and select Play BLRevive.exe.'
+        }
     }
 }
 
@@ -470,8 +511,10 @@ $installInfo = @(
     ('PayloadSHA256=' + $actualHash),
 
     ('ArchiveMode=' + $ArchiveMode),
+    ('ArchiveLauncher=' + $(if ($ArchiveMode) { $ArchiveLauncher } else { '' })),
     ('SteamAppIdManaged=' + $SteamAppIdManaged),
     ('ArchiveShortcut=' + $ArchiveShortcut),
+    ('SteamShortcutRequested=' + $SteamShortcutRequested),
 
     ('IconMode=EmbeddedPrebuiltBLReviveLogo'),
     ('IconSource=' + $PackagedLauncher),
@@ -484,7 +527,13 @@ Write-Host ''
 Write-Host 'SUCCESS' -ForegroundColor Green
 Write-Host '-------'
 if ($ArchiveMode) {
-    Write-Host 'Your archive copy is ready. Start Steam, then use the Play BLRevive desktop shortcut.'
+    Write-Host 'Your archive copy is ready.'
+    if ($SteamShortcutRequested) {
+        Write-Host 'Finish by clicking Add Selected Programs in the Steam window.'
+        Write-Host 'You can then launch Play BLRevive directly from your Steam Library.'
+    } else {
+        Write-Host 'Start Steam, then use the Play BLRevive desktop shortcut.'
+    }
 } else {
     Write-Host 'Steam Play will now launch FoxGame-win32-Shipping.exe through the BLRevive wrapper.'
 }

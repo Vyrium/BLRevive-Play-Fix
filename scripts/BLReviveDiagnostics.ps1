@@ -59,6 +59,7 @@ Add-Line ''
 
 Add-FileStatus 'Real game executable' (Join-Path $GameDir 'FoxGame-win32-Shipping.exe')
 Add-FileStatus 'Steam _BE launcher/wrapper' (Join-Path $GameDir 'FoxGame-win32-Shipping_BE.exe')
+Add-FileStatus 'Archive Play BLRevive launcher' (Join-Path $GameDir 'Play BLRevive.exe')
 Add-FileStatus 'Original _BE backup' (Join-Path $GameDir 'FoxGame-win32-Shipping_BE.official-backup.exe')
 Add-FileStatus 'BLRevive DINPUT8 loader' (Join-Path $GameDir 'DINPUT8.dll')
 Add-FileStatus 'BLRevive DLL' (Join-Path $GameDir 'BLRevive.dll')
@@ -79,7 +80,7 @@ $installInfo = Join-Path $ScriptDir 'install-info.txt'
 if (Test-Path $installInfo) {
     Add-Line 'Install metadata:'
     foreach ($line in Get-Content -LiteralPath $installInfo) {
-        if ($line -match '^(BLRevive|Installed=|PayloadSHA256=|ArchiveMode=|SteamAppIdManaged=|ArchiveShortcut=|IconMode=|IconSource=|IconEmbedded=|ShellIconRefreshRequested=)') { Add-Line ('  ' + $line) }
+        if ($line -match '^(BLRevive|Installed=|PayloadSHA256=|ArchiveMode=|ArchiveLauncher=|SteamAppIdManaged=|ArchiveShortcut=|SteamShortcutRequested=|IconMode=|IconSource=|IconEmbedded=|ShellIconRefreshRequested=)') { Add-Line ('  ' + $line) }
     }
     Add-Line ''
 }
