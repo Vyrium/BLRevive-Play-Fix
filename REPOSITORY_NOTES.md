@@ -1,7 +1,7 @@
 # Repository notes
 
-This repository contains the source for the forthcoming initial public
-**BLRevive Steam Play Fix 1.0.0** release.
+This repository contains the source for BLRevive Steam Play Fix. Version 1.1
+expands the original Steam-owner flow to support archive installations.
 
 ## Important
 
@@ -19,7 +19,14 @@ This repository contains the source for the forthcoming initial public
   are the only runnable files in the package root. Their PowerShell
   implementations live under `scripts/`; launcher source, packaged assets and
   developer tooling live under `src/`, `resources/` and `tools/`.
-- The 1.0.0 player installer validates and copies the prebuilt launcher from the
+- `scripts/BLRevivePrerequisites.ps1` owns prerequisite detection, official
+  publisher downloads, Authenticode validation, elevation and silent setup.
+  Release smoke tests must use `-SkipPrerequisites`; never install system
+  components on the developer machine as part of a package test.
+- Archive mode is selected only when the chosen game directory does not match
+  a Steam library containing `appmanifest_209870.acf`. It manages AppID `480`
+  and a desktop shortcut while preserving any pre-existing AppID file.
+- The 1.1.0 player installer validates and copies the prebuilt launcher from the
   generated release payload. It never compiles code on the player's computer.
   `tools/distribution/BuildRelease.ps1` creates and smoke-tests the player ZIP.
 - The player release is intentionally a ZIP with the three root BAT entry

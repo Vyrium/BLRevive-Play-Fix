@@ -46,11 +46,13 @@ try {
     }
 
     $gameDir = Join-Path $testRoot 'Fresh Blacklight Install (x86)\blacklightretribution\Binaries\Win32'
+    $testDesktop = Join-Path $testRoot 'Desktop'
     New-Item -ItemType Directory -Path $gameDir -Force | Out-Null
     $official = Join-Path $env:WINDIR 'System32\notepad.exe'
     $officialHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $official).Hash
     Copy-Item -LiteralPath $official -Destination (Join-Path $gameDir 'FoxGame-win32-Shipping.exe')
     Copy-Item -LiteralPath $official -Destination (Join-Path $gameDir 'FoxGame-win32-Shipping_BE.exe')
+    Set-Content -LiteralPath (Join-Path $gameDir 'steam_appid.txt') -Value '209870' -Encoding ASCII
 
     $originalPayloadBytes = [IO.File]::ReadAllBytes($payloadLauncher)
     [byte[]]$tamperedPayloadBytes = $originalPayloadBytes.Clone()
@@ -59,7 +61,7 @@ try {
     try {
         [IO.File]::WriteAllBytes($payloadLauncher, $tamperedPayloadBytes)
         $ErrorActionPreference = 'Continue'
-        $null = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir 2>&1
+        $null = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop 2>&1
         $tamperExit = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $savedErrorActionPreference
@@ -69,7 +71,7 @@ try {
         throw 'Installer accepted a launcher whose bytes did not match the release hash.'
     }
 
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packageDir 'scripts\BLReviveInstaller.ps1') -GameDirectory $gameDir -SkipPrerequisites -ShortcutDirectory $testDesktop
     $installExit = $LASTEXITCODE
     if ($installExit -ne 0) { throw "Install test failed with exit code $installExit." }
 
@@ -87,10 +89,12 @@ try {
     $supportNames = @(Get-ChildItem -LiteralPath $supportDir -File | Select-Object -ExpandProperty Name | Sort-Object)
     $expectedSupport = @(
         'BLReviveDiagnostics.ps1',
+        'BLRevivePrerequisites.ps1',
         'BLReviveUninstaller.ps1',
         'Diagnose.bat',
         'install-info.txt',
         'README.txt',
+        'steam_appid.original.txt',
         'Uninstall.bat'
     ) | Sort-Object
     if (@(Compare-Object $expectedSupport $supportNames).Count -ne 0) {
@@ -100,6 +104,16 @@ try {
     $installInfo = Get-Content -Raw -LiteralPath (Join-Path $supportDir 'install-info.txt')
     if ($installInfo -notmatch ('PayloadSHA256=' + [regex]::Escape($actualHash))) {
         throw 'Install metadata does not record the validated payload hash.'
+    }
+    if ($installInfo -notmatch 'ArchiveMode=True') {
+        throw 'Archive installation was not detected.'
+    }
+    if ((Get-Content -Raw -LiteralPath (Join-Path $gameDir 'steam_appid.txt')).Trim() -ne '480') {
+        throw 'Archive installation did not configure Steam compatibility AppID 480.'
+    }
+    $testShortcut = Join-Path $testDesktop 'Play BLRevive.lnk'
+    if (-not (Test-Path -LiteralPath $testShortcut -PathType Leaf)) {
+        throw 'Archive installation did not create its Play BLRevive shortcut.'
     }
 
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $supportDir 'BLReviveDiagnostics.ps1')
@@ -111,6 +125,12 @@ try {
     if ($uninstallExit -ne 0) { throw "Uninstall test failed with exit code $uninstallExit." }
     if ((Get-FileHash -Algorithm SHA256 -LiteralPath $installedLauncher).Hash -ne $officialHash) {
         throw 'Uninstall test did not restore the official launcher.'
+    }
+    if ((Get-Content -Raw -LiteralPath (Join-Path $gameDir 'steam_appid.txt')).Trim() -ne '209870') {
+        throw 'Uninstall test did not restore the pre-existing AppID file.'
+    }
+    if (Test-Path -LiteralPath $testShortcut) {
+        throw 'Uninstall test did not remove its archive desktop shortcut.'
     }
 
     [pscustomobject]@{

@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '1.0.0',
+    [string]$Version = '1.1.0',
     [switch]$SkipTest,
     [switch]$KeepStaging
 )
@@ -62,7 +62,8 @@ try {
     foreach ($name in @(
         'BLReviveInstaller.ps1',
         'BLReviveUninstaller.ps1',
-        'BLReviveDiagnostics.ps1'
+        'BLReviveDiagnostics.ps1',
+        'BLRevivePrerequisites.ps1'
     )) {
         Copy-Item -LiteralPath (Join-Path $RepositoryRoot ('scripts\' + $name)) -Destination (Join-Path $StageDir ('scripts\' + $name)) -Force
     }

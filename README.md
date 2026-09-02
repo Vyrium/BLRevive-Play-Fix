@@ -1,6 +1,6 @@
 # BLRevive Steam Play Fix
 
-Make Blacklight: Retribution's normal Steam **PLAY** button work with BLRevive.
+One simple setup for playing Blacklight: Retribution with BLRevive, whether the game came from Steam or the community archive.
 
 [Download the latest player release](https://github.com/Vyrium/BLRevive-Steam-Play-Fix/releases)
 
@@ -11,28 +11,45 @@ Make Blacklight: Retribution's normal Steam **PLAY** button work with BLRevive.
 
 ### Install
 
-1. [Download the latest release ZIP](https://github.com/Vyrium/BLRevive-Steam-Play-Fix/releases) and extract it anywhere.
-2. Double-click **Install BLRevive Steam Play Fix.bat**.
-3. Start Blacklight: Retribution from Steam using the normal **PLAY** button.
+1. Install Blacklight from Steam if you own it, or follow BLRevive's [Download BL:R guide](https://blrevive.gitlab.io/wiki/guides/user/getting-started/#download-blr) and extract the archive.
+2. [Download the latest tool release ZIP](https://github.com/Vyrium/BLRevive-Steam-Play-Fix/releases) and extract it anywhere.
+3. Double-click **Install BLRevive Steam Play Fix.bat** and select your Blacklight folder if asked.
+4. If Windows asks for administrator permission, approve it so missing game prerequisites can be installed.
+5. Start the game:
+   - **Steam owner:** use Blacklight: Retribution's normal **PLAY** button.
+   - **Archive player:** start Steam, then double-click the new **Play BLRevive** desktop shortcut.
 
 > [!NOTE]
-> The installer finds your Steam copy automatically. If it cannot, choose either the main *Blacklight: Retribution* folder or its `Binaries\Win32` folder in the folder picker.
+> The installer finds a Steam copy automatically. For an archive copy, choose either the main *Blacklight: Retribution* folder or its `Binaries\Win32` folder in the folder picker. An internet connection is required the first time missing prerequisites are installed.
 
 #### What the installer does
 
 - Saves Steam's original BattlEye launcher as `FoxGame-win32-Shipping_BE.official-backup.exe`.
 - Installs the BLRevive compatibility launcher under the filename Steam expects.
 - Adds `BLReviveLauncher.ini`, which holds the BLRevive server endpoints.
+- Checks and installs Blacklight's original Steam prerequisite chain from Microsoft and NVIDIA publisher downloads.
+- Configures archive copies with Steam compatibility AppID `480` and creates a **Play BLRevive** desktop shortcut.
 - Refreshes Windows Explorer so the launcher icon updates cleanly.
 
-The real game executable, `FoxGame-win32-Shipping.exe`, is never modified. No Steam launch options or `steam_appid.txt` file are required.
+The real game executable, `FoxGame-win32-Shipping.exe`, is never modified. No custom Steam launch options are required. Licensed Steam installations keep AppID `209870`; archive installations use AppID `480`, matching BLRevive's ZCure guide.
+
+#### Original game prerequisites
+
+SteamDB records these shared redistributables for Blacklight AppID `209870`:
+
+- Visual C++ 2010 SP1, 2012 Update 4, and 2013 redistributables
+- DirectX End-User Runtimes (June 2010)
+- .NET Framework 4 Client Profile
+- NVIDIA PhysX System Software 9.12.1031
+
+The setup installs only components that are missing or older than the required runtime version. On current Windows, the installed .NET Framework 4.x satisfies the old Client Profile dependency. Every downloaded installer must have a valid Microsoft or NVIDIA digital signature before it is allowed to run. Downloads are cached under `%LOCALAPPDATA%\BLReviveSteamPlayFix\Prerequisites` for repair or retry.
 
 ### Uninstall
 
 1. Open the extracted player package.
 2. Double-click **Uninstall.bat**.
 
-The original Steam launcher is restored automatically. If it cannot be found, the uninstaller opens the same folder picker. It leaves the configuration and log files behind for troubleshooting; they are safe to delete manually.
+For Steam owners, the original Steam launcher is restored automatically. For archive players, the wrapper, managed AppID file, and generated desktop shortcut are removed. System-wide prerequisites are left installed because other games may use them. The uninstaller leaves configuration and log files behind for troubleshooting; they are safe to delete manually.
 
 ### Need help?
 
@@ -46,7 +63,7 @@ If Steam **Verify integrity of game files** has been run, it may restore Steam's
 
 ### How it works
 
-Steam launches the obsolete BattlEye bootstrap executable, `FoxGame-win32-Shipping_BE.exe`. This fix replaces only that bootstrap with a small compatibility launcher that:
+Steam normally launches the obsolete BattlEye bootstrap executable, `FoxGame-win32-Shipping_BE.exe`. This fix replaces that bootstrap—or supplies it for an archive copy—with a small compatibility launcher that:
 
 1. Receives Steam's command line.
 2. Removes duplicate or obsolete ZCure and Presence arguments.
@@ -56,7 +73,7 @@ Steam launches the obsolete BattlEye bootstrap executable, `FoxGame-win32-Shippi
 6. Waits for the game process, so Steam stays in its Running state.
 7. Writes a diagnostic log for troubleshooting.
 
-The runtime launcher makes no network requests, injects nothing, changes no registry settings, and does not patch game files. ZCure and Presence networking remains the game's job.
+The runtime launcher makes no network requests, injects nothing, changes no registry settings, and does not patch game files. The installer makes publisher-only network requests when prerequisites are missing. ZCure and Presence networking remains the game's job.
 
 ### Default configuration
 
@@ -109,7 +126,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
     -File "tools\distribution\BuildRelease.ps1"
 ```
 
-The release build compiles the launcher, stages only player-facing files, records the payload SHA-256, creates `dist\BLRevive-Steam-Play-Fix-1.0.0.zip`, writes `dist\SHA256SUMS.txt`, and runs a disposable install/diagnose/uninstall smoke test against that exact ZIP. `dist` build output is intentionally not committed.
+The release build compiles the launcher, stages only player-facing files, records the payload SHA-256, creates `dist\BLRevive-Steam-Play-Fix-1.1.0.zip`, writes `dist\SHA256SUMS.txt`, and runs a disposable install/diagnose/uninstall smoke test against that exact ZIP. `dist` build output is intentionally not committed.
 
 ### Repository layout
 

@@ -1,6 +1,23 @@
 BLRevive Steam Play Fix - Changelog
 ===================================
 
+1.1.0
+-----
+- Added first-class support for community archive installations used by
+  players who do not own Blacklight: Retribution on Steam.
+- Detects and installs Blacklight's SteamDB-declared prerequisite chain:
+  Visual C++ 2010/2012/2013, DirectX June 2010, .NET 4 compatibility, and
+  NVIDIA PhysX 9.12.1031.
+- Downloads redistributables only from Microsoft and NVIDIA endpoints and
+  rejects installers without the expected valid publisher signature.
+- Installs only missing or outdated components and caches publisher downloads
+  for retries.
+- Archive mode writes Steam compatibility AppID 480, preserves any previous
+  AppID file, and creates a Play BLRevive desktop shortcut.
+- Uninstall restores/removes archive-specific integration without removing
+  shared system prerequisites that other games may need.
+- Diagnostics now report prerequisite readiness.
+
 1.0.0
 -----
 - Initial public release candidate.

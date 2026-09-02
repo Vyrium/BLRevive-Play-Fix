@@ -11,12 +11,12 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("Compatibility launcher for Blacklight: Retribution / BLRevive")]
 [assembly: AssemblyCompany("BLRevive Community")]
 [assembly: AssemblyProduct("BLRevive Steam Play Fix")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 internal static class Program
 {
-    private const string LauncherVersion = "1.0.0";
+    private const string LauncherVersion = "1.1.0";
     private const string GameExeName = "FoxGame-win32-Shipping.exe";
     private const string ConfigFileName = "BLReviveLauncher.ini";
     private const string LogFileName = "BLReviveSteamLauncher.log";

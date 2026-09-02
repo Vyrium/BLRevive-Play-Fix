@@ -10,6 +10,7 @@ $GameExeName = 'FoxGame-win32-Shipping.exe'
 $BackupName = 'FoxGame-win32-Shipping_BE.official-backup.exe'
 $WrapperProductName = 'BLRevive Steam Play Fix'
 $UninstallLog = Join-Path $ScriptDir 'BLReviveSteamPlayFix-Uninstall.log'
+$InstallInfoPath = Join-Path $ScriptDir 'install-info.txt'
 
 function Write-Status([string]$Text, [ValidateSet('Info', 'Success', 'Warning')] [string]$Kind = 'Info') {
     $prefix = if ($Kind -eq 'Warning') { '[!]' } else { '[+]' }
@@ -288,6 +289,17 @@ Write-Host ''
 $GameDir = Find-GameDirectory
 $Target = Join-Path $GameDir $LauncherName
 $Backup = Join-Path $GameDir $BackupName
+$ArchiveMode = $false
+$SteamAppIdManaged = $false
+$ArchiveShortcut = $null
+
+if (Test-Path -LiteralPath $InstallInfoPath -PathType Leaf) {
+    foreach ($line in Get-Content -LiteralPath $InstallInfoPath) {
+        if ($line -eq 'ArchiveMode=True') { $ArchiveMode = $true }
+        if ($line -eq 'SteamAppIdManaged=True') { $SteamAppIdManaged = $true }
+        if ($line -like 'ArchiveShortcut=*') { $ArchiveShortcut = $line.Substring('ArchiveShortcut='.Length) }
+    }
+}
 
 Write-Host "Game directory: $GameDir"
 
@@ -337,8 +349,41 @@ elseif ($BackupIsUsable) {
         Write-Status 'The current launcher is not a usable BLRevive wrapper or official backup; leaving it untouched.' 'Warning'
     }
 
-    Write-Status 'Use Steam -> Blacklight: Retribution -> Properties -> Installed Files -> Verify integrity' 'Warning'
-    Write-Status 'to restore FoxGame-win32-Shipping_BE.exe.' 'Warning'
+    if (-not $ArchiveMode) {
+        Write-Status 'Use Steam -> Blacklight: Retribution -> Properties -> Installed Files -> Verify integrity' 'Warning'
+        Write-Status 'to restore FoxGame-win32-Shipping_BE.exe.' 'Warning'
+    }
+}
+
+if ($ArchiveMode -and $SteamAppIdManaged) {
+    $steamAppId = Join-Path $GameDir 'steam_appid.txt'
+    $steamAppIdBackup = Join-Path $ScriptDir 'steam_appid.original.txt'
+    if (Test-Path -LiteralPath $steamAppIdBackup -PathType Leaf) {
+        Copy-Item -LiteralPath $steamAppIdBackup -Destination $steamAppId -Force
+        Write-Status 'Restored the previous steam_appid.txt.' 'Success'
+    } elseif (Test-Path -LiteralPath $steamAppId -PathType Leaf) {
+        if ((Get-Content -Raw -LiteralPath $steamAppId).Trim() -eq '480') {
+            Remove-Item -LiteralPath $steamAppId -Force
+            Write-Status 'Removed the archive compatibility steam_appid.txt.' 'Success'
+        }
+    }
+}
+
+if ($ArchiveMode -and $ArchiveShortcut) {
+    try {
+        $shortcutFull = [IO.Path]::GetFullPath($ArchiveShortcut)
+        if ([IO.Path]::GetExtension($shortcutFull) -eq '.lnk' -and
+            (Test-Path -LiteralPath $shortcutFull -PathType Leaf)) {
+            $shell = New-Object -ComObject WScript.Shell
+            $shortcut = $shell.CreateShortcut($shortcutFull)
+            if ($shortcut.TargetPath -eq $Target) {
+                Remove-Item -LiteralPath $shortcutFull -Force
+                Write-Status 'Removed the Play BLRevive desktop shortcut.' 'Success'
+            }
+        }
+    } catch {
+        Write-Status ('The desktop shortcut could not be removed: ' + $_.Exception.Message) 'Warning'
+    }
 }
 
 if ($OfficialLauncherPresent) {
@@ -353,7 +398,11 @@ if ($OriginalRestored) {
 } elseif ($OfficialLauncherPresent) {
     Write-Status 'Uninstall cleanup completed; the existing non-BLRevive launcher was preserved.' 'Success'
 } else {
-    Write-Status 'BLRevive wrapper removal completed without an original launcher backup.' 'Warning'
+    if ($ArchiveMode) {
+        Write-Status 'BLRevive archive integration was removed.' 'Success'
+    } else {
+        Write-Status 'BLRevive wrapper removal completed without an original launcher backup.' 'Warning'
+    }
 }
 Write-Host 'BLReviveLauncher.ini, launcher diagnostics, and uninstall logs were left in place intentionally.'
 Write-Host 'They may be deleted manually.'

@@ -37,12 +37,24 @@ function Add-FileStatus([string]$Label, [string]$Path) {
     }
 }
 
-Add-Line 'BLRevive Steam Play Fix 1.0.0 - Diagnostic Report'
+Add-Line 'BLRevive Steam Play Fix 1.1.0 - Diagnostic Report'
 Add-Line '============================================='
 Add-Line ('Generated: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'))
 Add-Line ('Game directory: ' + $GameDir)
 Add-Line ('Windows: ' + [Environment]::OSVersion.VersionString)
 Add-Line ('64-bit OS: ' + [Environment]::Is64BitOperatingSystem)
+Add-Line ''
+
+$prerequisiteScript = Join-Path $ScriptDir 'BLRevivePrerequisites.ps1'
+if (Test-Path -LiteralPath $prerequisiteScript -PathType Leaf) {
+    Add-Line 'Blacklight prerequisite check:'
+    Add-Line '------------------------------'
+    $prerequisiteOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $prerequisiteScript -CheckOnly 2>&1
+    foreach ($outputLine in $prerequisiteOutput) { Add-Line ([string]$outputLine) }
+    Add-Line ('Prerequisite check exit code: ' + $LASTEXITCODE + ' (0=ready, 2=one or more missing)')
+} else {
+    Add-Line 'Blacklight prerequisite checker: MISSING'
+}
 Add-Line ''
 
 Add-FileStatus 'Real game executable' (Join-Path $GameDir 'FoxGame-win32-Shipping.exe')
@@ -67,15 +79,20 @@ $installInfo = Join-Path $ScriptDir 'install-info.txt'
 if (Test-Path $installInfo) {
     Add-Line 'Install metadata:'
     foreach ($line in Get-Content -LiteralPath $installInfo) {
-        if ($line -match '^(BLRevive|Installed=|PayloadSHA256=|IconMode=|IconSource=|IconEmbedded=|ShellIconRefreshRequested=)') { Add-Line ('  ' + $line) }
+        if ($line -match '^(BLRevive|Installed=|PayloadSHA256=|ArchiveMode=|SteamAppIdManaged=|ArchiveShortcut=|IconMode=|IconSource=|IconEmbedded=|ShellIconRefreshRequested=)') { Add-Line ('  ' + $line) }
     }
     Add-Line ''
 }
 
 $appId = Join-Path $GameDir 'steam_appid.txt'
 if (Test-Path $appId) {
-    Add-Line ('steam_appid.txt: PRESENT, value=' + ((Get-Content -Raw -LiteralPath $appId).Trim()))
-    Add-Line '  Note: not required for the normal Steam Play-button path.'
+    $appIdValue = (Get-Content -Raw -LiteralPath $appId).Trim()
+    Add-Line ('steam_appid.txt: PRESENT, value=' + $appIdValue)
+    if ($appIdValue -eq '480') {
+        Add-Line '  Note: expected for a BLRevive archive installation.'
+    } else {
+        Add-Line '  Note: not required for the licensed Steam Play-button path.'
+    }
 } else {
     Add-Line 'steam_appid.txt: not present (normal for Steam Play-button use)'
 }
