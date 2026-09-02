@@ -5,7 +5,7 @@
 <h1 align="center">Play Blacklight: Retribution Again</h1>
 
 <p align="center">
-  One easy setup for BLRevive—whether you still own Blacklight on Steam or downloaded the preserved community archive.
+  Install BLRevive for a Steam copy of Blacklight or the community archive.
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 </p>
 
 > [!IMPORTANT]
-> Download the ZIP attached to the latest GitHub **Release**. Do not download GitHub's automatically generated **Source code** ZIP—it does not contain the ready-to-use launcher.
+> Download the ZIP attached to the latest GitHub **Release**. Do not download GitHub's automatically generated **Source code** ZIP. It does not contain the ready-to-use launcher.
 
 ## Get back in the game
 
@@ -33,13 +33,13 @@ You need a Windows PC, Steam installed and signed in, and a copy of the Blacklig
    - **Steam owner:** open Blacklight: Retribution in your Steam Library and press **PLAY**.
    - **Archive player:** Steam opens an **Add Non-Steam Game** window with `Play BLRevive.exe` selected. Click **Add Selected Programs**, then launch **Play BLRevive** from your Steam Library.
 
-That is it. You do not need to copy DLL files, enter launch options, edit configuration files, or install old game components by hand.
+You do not need to copy DLL files, enter launch options, edit configuration files, or install old game components by hand.
 
 ### What this fixes
 
 - Connects the original Blacklight client to the BLRevive ZCure and Presence services.
 - Makes Steam's normal **PLAY** button work for existing owners.
-- Gives archive players a clearly named **Play BLRevive** entry for their Steam Library and a desktop fallback shortcut.
+- Adds **Play BLRevive** to an archive player's Steam Library and creates a desktop fallback shortcut.
 - Detects and installs the original DirectX, Visual C++, .NET, and PhysX requirements that Steam would normally handle.
 - Preserves the real Blacklight game executable instead of patching it.
 
@@ -51,7 +51,7 @@ Run **`Diagnose.bat`** from the folder where you extracted this tool. It creates
 BLReviveSteamPlayFix-Diagnostic.txt
 ```
 
-Attach that file when asking the BLRevive community for help. It reports the launcher, configuration, game files, prerequisite status, and recent launcher activity without intentionally collecting passwords or authentication tokens.
+Attach that file when asking the BLRevive community for help. It reports the launcher, configuration, game files, prerequisite status, and recent launcher activity. Common password and authentication-token values are redacted.
 
 Common fixes:
 
@@ -67,13 +67,13 @@ Double-click **`Uninstall.bat`** in the extracted player package.
 - For Steam owners, the original Steam/BattlEye launcher is restored.
 - For archive players, the managed launcher, AppID file, and desktop shortcut are removed or restored to their previous state.
 - Shared Windows prerequisites remain installed because other games may use them.
-- Remove the **Play BLRevive** entry from the Steam Library separately. The uninstaller deliberately does not edit Steam's binary shortcut database.
+- Remove the **Play BLRevive** entry from the Steam Library separately. The uninstaller does not edit Steam's binary shortcut database.
 
 ---
 
 ## Technical and security details
 
-This section is for developers, maintainers, and anyone who wants to understand every material change the installer makes.
+The sections below document the installer, launcher, downloaded prerequisites, and release process.
 
 ### Installation modes
 
@@ -112,7 +112,7 @@ The installer downloads redistributables only from Microsoft or NVIDIA endpoints
 | `FoxGame-win32-Shipping.exe` | The existing real Blacklight executable. It is never modified. |
 | `FoxGame-win32-Shipping_BE.exe` | BLRevive compatibility launcher installed under the filename expected by Steam. |
 | `FoxGame-win32-Shipping_BE.official-backup.exe` | Preserved original Steam/BattlEye launcher, when one exists. |
-| `Play BLRevive.exe` | Clearly named copy of the launcher used by archive installations and their Non-Steam Game entry. |
+| `Play BLRevive.exe` | Launcher used by archive installations and their Non-Steam Game entry. |
 | `steam_appid.txt` | Set to `480` only for archive mode. Any different pre-existing file is backed up for uninstall. |
 | `BLReviveLauncher.ini` | ZCure and Presence endpoint configuration. Existing configuration is preserved. |
 | `BLReviveSteamLauncher.log` | Rotating runtime diagnostic log created when the launcher runs. |
@@ -130,7 +130,7 @@ Steam normally starts the obsolete BattlEye bootstrap, `FoxGame-win32-Shipping_B
 6. Waits for the game to exit so Steam keeps its Running state and playtime tracking.
 7. Records a troubleshooting log, redacting common password- and token-style values.
 
-The runtime launcher itself makes no network requests, injects no code, changes no registry settings, and does not patch the game. ZCure and Presence networking remains the original game's responsibility. Only the installer accesses Microsoft and NVIDIA when a prerequisite download is needed.
+The runtime launcher makes no network requests, injects no code, changes no registry settings, and does not patch the game. The original game handles ZCure and Presence networking. The installer contacts Microsoft and NVIDIA only when a prerequisite download is needed.
 
 ### Default BLRevive endpoints
 
@@ -170,7 +170,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
     -File "tools\distribution\BuildRelease.ps1"
 ```
 
-This produces `dist\BLRevive-Steam-Play-Fix-1.1.0.zip` and `dist\SHA256SUMS.txt`, then tests the exact ZIP. System prerequisites are intentionally skipped during the disposable package test.
+This produces `dist\BLRevive-Steam-Play-Fix-1.1.0.zip` and `dist\SHA256SUMS.txt`, then tests the exact ZIP. The disposable package test skips system prerequisite installation.
 
 ### Repository layout
 
