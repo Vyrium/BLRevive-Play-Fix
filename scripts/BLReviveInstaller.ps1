@@ -1,15 +1,18 @@
 param(
-    [string]$GameDirectory
+    [string]$GameDirectory,
+    [switch]$SkipPrerequisites,
+    [string]$ShortcutDirectory
 )
 
 $ErrorActionPreference = 'Stop'
 
-$Version = '1.0.0'
+$Version = '1.1.0'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PackageDir = Split-Path -Parent $ScriptDir
 $LauncherName = 'FoxGame-win32-Shipping_BE.exe'
 $GameExeName = 'FoxGame-win32-Shipping.exe'
 $CanonicalBackupName = 'FoxGame-win32-Shipping_BE.official-backup.exe'
+$ArchiveLauncherName = 'Play BLRevive.exe'
 $SupportDirName = 'BLReviveSteamPlayFix'
 
 function Write-Step([string]$Text) {
@@ -229,6 +232,98 @@ function Get-ProductName([string]$Path) {
     }
 }
 
+function Test-Administrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Invoke-PrerequisiteSetup {
+    $script = Join-Path $PackageDir 'scripts\BLRevivePrerequisites.ps1'
+    $prerequisiteLog = Join-Path $env:LOCALAPPDATA 'BLReviveSteamPlayFix\Prerequisites\BLRevivePrerequisites.log'
+    if (-not (Test-Path -LiteralPath $script -PathType Leaf)) {
+        throw "The player package is incomplete. Missing: $script"
+    }
+
+    Write-Step 'Checking the original Blacklight game prerequisites.'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -CheckOnly
+    $checkExit = $LASTEXITCODE
+    if ($checkExit -eq 0) { return }
+    if ($checkExit -ne 2) { throw "Prerequisite check failed with exit code $checkExit." }
+
+    Write-Warn 'One or more Blacklight prerequisites are missing.'
+    Write-Warn 'Windows may ask for administrator permission while they are installed.'
+    Write-Host 'The prerequisite step is normally automatic.'
+    Write-Host 'Wait while download percentages or elapsed-time messages are changing.'
+    Write-Host 'If PowerShell visibly waits after a completed download, click that window and press Enter once.'
+    Write-Host 'Keep all installer windows open until a success or error message appears.'
+
+    if (Test-Administrator) {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Install
+        $installExit = $LASTEXITCODE
+    } else {
+        Write-Step 'Opening the prerequisite installer with administrator permission.'
+        Write-Host 'Approve the Windows prompt. A second PowerShell window will show download and install progress.'
+        Write-Host 'This window waits for the administrator window. Follow any prompt shown there and do not close either window.'
+        $quotedScript = '"' + $script.Replace('"', '""') + '"'
+        $process = Start-Process -FilePath 'powershell.exe' -Verb RunAs -Wait -PassThru -ArgumentList (
+            '-NoProfile -ExecutionPolicy Bypass -File ' + $quotedScript + ' -Install'
+        )
+        $installExit = $process.ExitCode
+    }
+
+    if ($installExit -ne 0) {
+        Write-Warn ('Prerequisite installation log: ' + $prerequisiteLog)
+        if (Test-Path -LiteralPath $prerequisiteLog -PathType Leaf) {
+            Write-Host ''
+            Write-Host 'Last prerequisite log lines:' -ForegroundColor Yellow
+            Write-Host '----------------------------'
+            Get-Content -LiteralPath $prerequisiteLog -Tail 25 | ForEach-Object { Write-Host $_ }
+            Write-Host ''
+        }
+        throw "Blacklight prerequisite installation failed or was cancelled (exit code $installExit)."
+    }
+}
+
+function Test-LicensedSteamInstallation([string]$Path) {
+    $gameRoot = (Resolve-Path -LiteralPath (Join-Path $Path '..\..')).Path.TrimEnd('\')
+    foreach ($library in Get-SteamLibraries) {
+        $manifest = Join-Path $library 'steamapps\appmanifest_209870.acf'
+        $steamGame = Join-Path $library 'steamapps\common\blacklightretribution'
+        if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { continue }
+        if (-not (Test-Path -LiteralPath $steamGame -PathType Container)) { continue }
+        if ((Resolve-Path -LiteralPath $steamGame).Path.TrimEnd('\') -eq $gameRoot) { return $true }
+    }
+    return $false
+}
+
+function New-ArchivePlayShortcut([string]$LauncherPath) {
+    $desktop = if ($ShortcutDirectory) { $ShortcutDirectory } else { [Environment]::GetFolderPath('DesktopDirectory') }
+    if (-not $desktop) { return $null }
+    New-Item -ItemType Directory -Path $desktop -Force | Out-Null
+
+    $shortcutPath = Join-Path $desktop 'Blacklight Retribution.lnk'
+    $shell = New-Object -ComObject WScript.Shell
+    if (Test-Path -LiteralPath $shortcutPath -PathType Leaf) {
+        try {
+            $existing = $shell.CreateShortcut($shortcutPath)
+            if ($existing.TargetPath -and $existing.TargetPath -ne $LauncherPath) {
+                $shortcutPath = Join-Path $desktop 'Blacklight Retribution (BLRevive).lnk'
+            }
+        } catch {
+            $shortcutPath = Join-Path $desktop 'Blacklight Retribution (BLRevive).lnk'
+        }
+    }
+
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = $LauncherPath
+    $shortcut.WorkingDirectory = Split-Path -Parent $LauncherPath
+    $shortcut.IconLocation = $LauncherPath + ',0'
+    $shortcut.Description = 'Play Blacklight: Retribution on BLRevive'
+    $shortcut.Save()
+    return $shortcutPath
+}
+
 Write-Host ("BLRevive Steam Play Fix " + $Version)
 Write-Host '================================'
 Write-Host ''
@@ -238,6 +333,7 @@ Write-Step "Blacklight installation: $GameDir"
 
 $GameExe = Join-Path $GameDir $GameExeName
 $TargetLauncher = Join-Path $GameDir $LauncherName
+$ArchiveLauncher = Join-Path $GameDir $ArchiveLauncherName
 $BackupLauncher = Join-Path $GameDir $CanonicalBackupName
 $SupportDir = Join-Path $GameDir $SupportDirName
 $TargetConfig = Join-Path $GameDir 'BLReviveLauncher.ini'
@@ -263,12 +359,24 @@ if ($actualHash -ne $expectedHash) {
 }
 
 $launcherInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($PackagedLauncher)
-if ($launcherInfo.ProductName -ne 'BLRevive Steam Play Fix' -or $launcherInfo.FileVersion -ne '1.0.0.0') {
+if ($launcherInfo.ProductName -ne 'BLRevive Steam Play Fix' -or $launcherInfo.FileVersion -ne '1.1.0.0') {
     throw 'The packaged launcher identity or version is incorrect.'
 }
 
 
 Write-Step "Validated prebuilt BLRevive launcher (SHA-256: $actualHash)"
+
+$ArchiveMode = -not (Test-LicensedSteamInstallation $GameDir)
+$SteamAppIdManaged = $false
+$ArchiveShortcut = $null
+
+if (-not $ArchiveMode) {
+    Write-Step 'Licensed Steam installation detected; Steam manages the original game prerequisites.'
+} elseif ($SkipPrerequisites) {
+    Write-Warn 'Prerequisite setup was skipped by an explicit developer/test option.'
+} else {
+    Invoke-PrerequisiteSetup
+}
 
 # Recover one of the backup names used by earlier manual instructions if present.
 if (-not (Test-Path $BackupLauncher)) {
@@ -330,11 +438,46 @@ foreach ($file in @(
     @{ Source = 'Uninstall.bat'; Destination = 'Uninstall.bat' },
     @{ Source = 'scripts\BLReviveUninstaller.ps1'; Destination = 'BLReviveUninstaller.ps1' },
     @{ Source = 'Diagnose.bat'; Destination = 'Diagnose.bat' },
-    @{ Source = 'scripts\BLReviveDiagnostics.ps1'; Destination = 'BLReviveDiagnostics.ps1' }
+    @{ Source = 'scripts\BLReviveDiagnostics.ps1'; Destination = 'BLReviveDiagnostics.ps1' },
+    @{ Source = 'scripts\BLRevivePrerequisites.ps1'; Destination = 'BLRevivePrerequisites.ps1' }
 )) {
     Copy-Item -LiteralPath (Join-Path $PackageDir $file.Source) -Destination (Join-Path $SupportDir $file.Destination) -Force
 }
 Copy-Item -LiteralPath (Join-Path $PackageDir 'README.md') -Destination (Join-Path $SupportDir 'README.txt') -Force
+
+if ($ArchiveMode) {
+    Write-Step 'Archive installation detected; configuring Steam compatibility AppID 480.'
+    $steamAppId = Join-Path $GameDir 'steam_appid.txt'
+    $steamAppIdBackup = Join-Path $SupportDir 'steam_appid.original.txt'
+    if (Test-Path -LiteralPath $steamAppId -PathType Leaf) {
+        $currentAppId = (Get-Content -Raw -LiteralPath $steamAppId).Trim()
+        if ($currentAppId -ne '480') {
+            if (-not (Test-Path -LiteralPath $steamAppIdBackup)) {
+                Copy-Item -LiteralPath $steamAppId -Destination $steamAppIdBackup
+            }
+            Set-Content -LiteralPath $steamAppId -Value '480' -Encoding ASCII
+            $SteamAppIdManaged = $true
+        }
+    } else {
+        Set-Content -LiteralPath $steamAppId -Value '480' -Encoding ASCII
+        $SteamAppIdManaged = $true
+    }
+
+    Write-Step "Installing archive launcher as $ArchiveLauncherName"
+    Copy-Item -LiteralPath $PackagedLauncher -Destination $ArchiveLauncher -Force
+
+    try {
+        $ArchiveShortcut = New-ArchivePlayShortcut $ArchiveLauncher
+        if ($ArchiveShortcut) { Write-Step "Created desktop shortcut: $ArchiveShortcut" }
+    } catch {
+        Write-Warn ('The desktop shortcut could not be created: ' + $_.Exception.Message)
+        Write-Warn "You can play by opening: $ArchiveLauncher"
+    }
+
+    Write-Step 'The Blacklight Retribution desktop shortcut is ready.'
+    Write-Host 'Optional Steam Library entry: Games -> Add a Non-Steam Game to My Library,'
+    Write-Host 'then browse to and select Play BLRevive.exe in this Blacklight folder.'
+}
 
 $ShellIconRefreshRequested = Request-WindowsShellIconRefresh $TargetLauncher
 if ($ShellIconRefreshRequested) {
@@ -351,6 +494,11 @@ $installInfo = @(
     ('RuntimeLog=' + (Join-Path $GameDir 'BLReviveSteamLauncher.log')),
     ('PayloadSHA256=' + $actualHash),
 
+    ('ArchiveMode=' + $ArchiveMode),
+    ('ArchiveLauncher=' + $(if ($ArchiveMode) { $ArchiveLauncher } else { '' })),
+    ('SteamAppIdManaged=' + $SteamAppIdManaged),
+    ('ArchiveShortcut=' + $ArchiveShortcut),
+
     ('IconMode=EmbeddedPrebuiltBLReviveLogo'),
     ('IconSource=' + $PackagedLauncher),
     ('IconEmbedded=True'),
@@ -361,7 +509,13 @@ $installInfo | Set-Content -LiteralPath (Join-Path $SupportDir 'install-info.txt
 Write-Host ''
 Write-Host 'SUCCESS' -ForegroundColor Green
 Write-Host '-------'
-Write-Host 'Steam Play will now launch FoxGame-win32-Shipping.exe through the BLRevive wrapper.'
+if ($ArchiveMode) {
+    Write-Host 'Your archive copy is ready.'
+    Write-Host 'Start the Blacklight Retribution desktop shortcut to play.'
+    Write-Host 'Adding Play BLRevive.exe to Steam is optional and must be confirmed in Steam.'
+} else {
+    Write-Host 'Steam Play will now launch FoxGame-win32-Shipping.exe through the BLRevive wrapper.'
+}
 Write-Host 'You do not need custom ZCure/Presence Steam Launch Options.'
 Write-Host ''
 Write-Host 'Launcher icon:'
